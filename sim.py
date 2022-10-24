@@ -1,36 +1,13 @@
 from datetime import datetime
 
 import Line_notification as line
+from Class_dir.Controller import Controller
 from cal import simulation
 
 
-def sim(CAR_MAX, merging_ratio, penetration, ego, seed, dir_name, q_lane0, interval):
-    def calculate(CAR_MAX,
-                  merging_ratio,  # ?制御車両割合
-                  penetration,
-                  ego,
-                  q_lane0,  # ? 合流車線交通量
-                  seed,  # ?シード値
-                  dir_name,
-                  interval,
-                  time_max=600,  # ?シミュレーションを行う時間の長さ[s]
-                  ):
-        simulation(time_max,
-                   CAR_MAX,
-                   q_lane0,
-                   merging_ratio,
-                   penetration,
-                   ego,
-                   seed,
-                   dir_name,
-                   interval)
-
-    # ####シミュレーション設定#####
-    # calculate(q_lane0=50, q_lane2=280, q_lane3=200, merging_ratio=merging_ratio, penetration=penetration, seed=seed, dir_name=dir_name)
-
-    calculate(CAR_MAX=CAR_MAX, merging_ratio=merging_ratio, penetration=penetration, ego=ego, q_lane0=q_lane0,
-              seed=seed,
-              dir_name=dir_name, interval=interval)
+def sim(CAR_MAX, merging_ratio, penetration, ego, seed, dir_name, q_lane0, interval, controller: Controller):
+    simulation(CAR_MAX=CAR_MAX, q_lane0=q_lane0, merging_ratio=merging_ratio, penetration=penetration, ego=ego,
+               seed=seed, dir_name=dir_name, interval=interval, controller=controller)
 
 
 if __name__ == "__main__":
@@ -71,6 +48,7 @@ if __name__ == "__main__":
         ego_ls)
     interval_log = 10  # (0.1s)
     # todo 各制御ごとに制御オプションを追加
+    controller = Controller()
     for CAR_MAX in car_max_ls:
         for penetration in penetration_ls:
             for merging_ratio in merging_ratio_ls:
@@ -85,7 +63,8 @@ if __name__ == "__main__":
                                 seed=seed,
                                 dir_name=dir_name,
                                 q_lane0=q_lane0,
-                                interval=interval_log)
+                                interval=interval_log,
+                                controller=controller)
                             sim_time += 1
 
     # result.make_result(dir_name=dir_name, penetration_ls=penetration_ls, car_max_ls=car_max_ls, seed_ls=seed_ls)

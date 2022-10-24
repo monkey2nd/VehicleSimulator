@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from random import Random
 from typing import List
 
+from Class_dir.Controller import Controller
 from Class_dir.DataCollect import DataCollect
 from Class_dir.ParticularCar import Invisible_Vehicle
 from Class_dir.VehicleClass import Vehicle
@@ -14,9 +17,9 @@ class LaneManager:
         self.lane_num = lane_num  # ? 車線数
         self.run_vehicle_ls: List[Vehicle] = []  # ? 現在走行している車両のCarクラスリスト
         self.q_lane_ls = []  # ? 各車線を走行する合計車両数のリスト
-        self.lane_vehicle_lists: List[List[Vehicle]] = [[] for i in range(lane_num)]  # ? 現在走行している各車線ごとのCarリスト
+        self.lane_vehicle_lists: List[List[Vehicle]] = [[] for _ in range(lane_num)]  # ? 現在走行している各車線ごとのCarリスト
 
-        self.occur_num_ls = [0 for i in range(lane_num)]  # ? 各車線ごとの車両発生数
+        self.occur_num_ls = [0 for _ in range(lane_num)]  # ? 各車線ごとの車両発生数
         self.frequency_ls = []  # ? 各車線の車両発生感覚
         self.generate_time_ls: List[List] = []  # ? 車両発生時刻用リスト
         self.next_generate_car_id = 1  # ? 次に発生する車両id
@@ -45,9 +48,9 @@ class LaneManager:
 
         self.third_control_point = 300  # ? 自動運転車両のtauを変更し始める地点
 
-        # self.car_ls_chenged_alpha = []
-        # self.car_limit_chened_alpha = 3
-
+        # self.car_ls_changed_alpha = []
+        # self.car_limit_changed_alpha = 3
+        self.controller: Controller | None = None
         self.invisible_car = Invisible_Vehicle()  # ? 第1走行車線の先頭に置く
 
         if penetration > 0:
@@ -113,13 +116,13 @@ class LaneManager:
                 lane_generate_time_ls[car_num + 1] = gen_time
 
     def init_lane_car_list(self) -> None:  # ? lane_id_lsを[[],[],...,[]]に初期化する関数
-        self.lane_vehicle_lists = [[] for i in range(self.lane_num)]
+        self.lane_vehicle_lists = [[] for _ in range(self.lane_num)]
 
     def make_lane_car_ls(self) -> None:
         """
         各車線ごとの車両クラスリストを作成
         """
-        lane_car_tmp = [[] for i in range(self.lane_num)]
+        lane_car_tmp = [[] for _ in range(self.lane_num)]
         self.init_lane_car_list()
 
         if len(self.run_vehicle_ls) > 0:
@@ -271,8 +274,8 @@ class LaneManager:
                     self.second_control_car_ls.remove(check_car)
                 del check_car
         """
-            if check_car.shift_begin_time + 40 == time and check_car.lane == 0 and self.serch_car(vehlog=vehlog, time=time - 1, Id=check_car.Id).shift_lane == 1:
-                if check_car.vel < 40 / 3.6 or self.serch_car(vehlog=vehlog, time=time - 40, Id=check_car.Id).vel_h - check_car.vel_h > 10:
+            if check_car.shift_begin_time + 40 == time and check_car.lane == 0 and self.search_car(vehlog=vehlog, time=time - 1, Id=check_car.Id).shift_lane == 1:
+                if check_car.vel < 40 / 3.6 or self.search_car(vehlog=vehlog, time=time - 40, Id=check_car.Id).vel_h - check_car.vel_h > 10:
                     self.run_vehicle_ls.remove(check_car)
                     check_car.lane = -1
 

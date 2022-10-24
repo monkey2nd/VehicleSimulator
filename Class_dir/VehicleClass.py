@@ -1,6 +1,8 @@
 import random
 from typing import Any, Dict, List
 
+from Class_dir.Controller import Controller
+
 
 class Vehicle:
     # noinspection PyTypeChecker
@@ -102,7 +104,7 @@ class Vehicle:
     def make_vd(min_vel, max_vel):
         return round(random.uniform(min_vel / 3.6, max_vel / 3.6), 2)
 
-    def change_vd(self, use_base_station, lane, extra_code=0):
+    def change_vd(self, controller: Controller, lane, extra_code=0):
         """
         車両生成時以外でvdを変化する関数
         """
@@ -127,7 +129,7 @@ class Vehicle:
                 elif lane == 3:
                     vd = self.make_vd(min_vel=111, max_vel=115)
         elif self.type == 1:
-            if use_base_station == 1:
+            if controller.speed_control:
                 if extra_code == 0:
                     if lane == 0:
                         vd = round(80 / 3.6, 2)
@@ -148,7 +150,7 @@ class Vehicle:
                     if lane == 1:
                         vd = self.make_vd(min_vel=91, max_vel=100)
 
-            elif use_base_station == 2:
+            elif controller.distance_control:
                 if extra_code == 0:
                     if lane == 0:
                         vd = round(80 / 3.6, 2)

@@ -4,7 +4,6 @@ class Controller:
         self.distance_control: bool = True  # 車間距離制御
         self.lc_control: bool = True  # 車線変更制御
         self.merging_control: bool = True  # 合流制御
-        self.test = None
 
     @property
     def use_control(self) -> bool:

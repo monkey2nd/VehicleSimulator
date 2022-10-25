@@ -51,7 +51,7 @@ class LaneManager:
         # self.car_ls_changed_alpha = []
         # self.car_limit_changed_alpha = 3
         self.controller: Controller = controller
-        self.invisible_car = InvisibleVehicle()  # ? 第1走行車線の先頭に置く
+        self.invisible_car = InvisibleVehicle(-1)  # ? 第1走行車線の先頭に置く
 
         self.random = Random()
         self.random.seed(seed)
@@ -159,7 +159,7 @@ class LaneManager:
         # ? 各値更新
         veh_info.max_accel = round(self.random.uniform(0.55, 0.75), 2)
         # self.desired_Deceleration = round(random.uniform(0.5, 1), 2)
-        veh_info.desired_Deceleration = round(self.random.uniform(0.5, 1.5), 2)
+        veh_info.desired_deceleration = round(self.random.uniform(0.5, 1.5), 2)
         veh_info.driver_reaction_time = round(self.random.uniform(0.54, 0.74), 2)
         veh_info.v_init = veh.vel = v_measure
         veh_info.occur_time = time
@@ -177,15 +177,15 @@ class LaneManager:
                 next_gen_veh.lane = lane
                 lane_ls = self.get_lane(lane)
                 if not lane_ls:
-                    next_gen_veh.front_car = None
+                    next_gen_veh.front_veh = None
                     next_gen_veh.distance = 9999
                 else:
-                    next_gen_veh.front_car = lane_ls[-1]
-                    next_gen_veh.distance = next_gen_veh.front_car.back - 5
+                    next_gen_veh.front_veh = lane_ls[-1]
+                    next_gen_veh.distance = next_gen_veh.front_veh.back - 5
 
                 # self.set_vd(vehicle=next_gen_veh, lane=lane)
 
-                self.set_veh_param(veh=next_gen_veh, front_car=next_gen_veh.front_car, time=time, lane=lane)
+                self.set_veh_param(veh=next_gen_veh, front_car=next_gen_veh.front_veh, time=time, lane=lane)
 
                 self.run_vehicle_ls.append(next_gen_veh)  # ? sort必要かも
                 self.next_id_increment()  # ? next_idを+1
@@ -293,20 +293,20 @@ class LaneManager:
                         check_car.distance = float('infinity')
 
                     if not index_ == len(lane_car_ls) - 1:
-                        check_car.back_car = lane_car_ls[index_ + 1]
+                        check_car.back_veh = lane_car_ls[index_ + 1]
 
-                    check_car.front_car = None
+                    check_car.front_veh = None
                     check_car.set_delta_v(acceleration_lane_end=self.acceleration_lane_end)
 
                 elif index_ == len(lane_car_ls) - 1:
-                    check_car.front_car = lane_car_ls[index_ - 1]
-                    check_car.back_car = None
+                    check_car.front_veh = lane_car_ls[index_ - 1]
+                    check_car.back_veh = None
                     check_car.set_distance()
                     check_car.set_delta_v(acceleration_lane_end=self.acceleration_lane_end)
 
                 else:
-                    check_car.front_car = lane_car_ls[index_ - 1]
-                    check_car.back_car = lane_car_ls[index_ + 1]
+                    check_car.front_veh = lane_car_ls[index_ - 1]
+                    check_car.back_veh = lane_car_ls[index_ + 1]
                     check_car.set_distance()
                     check_car.set_delta_v(acceleration_lane_end=self.acceleration_lane_end)
 

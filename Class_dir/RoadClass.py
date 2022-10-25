@@ -12,7 +12,8 @@ from Class_dir.LaneManager import LaneManager
 from Class_dir.VehicleClass import Vehicle
 from Class_dir.VehlogClass import Vehlog
 from random_maker import generate_random
-from save import create_avg_vel_log, create_log_sheet, create_merging_info_sheet, create_path, create_visual_sheet, \
+from save import create_avg_vel_log, create_info_sheet, create_log_sheet, create_merging_info_sheet, create_path, \
+    create_visual_sheet, \
     deceleration_log_sheet, lane_penetration_log
 
 
@@ -74,12 +75,12 @@ class Road:
 
         if leader is not None and vehicle.vel > leader.vel:
             # ? 最小車間距離
-            min_front_distance = (vehicle.vel - leader.vel) ** 2 / veh_info.desired_Deceleration / 2 + veh_info.dis_stop
+            min_front_distance = (vehicle.vel - leader.vel) ** 2 / veh_info.desired_deceleration / 2 + veh_info.dis_stop
             if min_front_distance > leader_dis:
                 return False
 
         if follower is not None:
-            min_back_distance = (follower.vel - vehicle.vel) ** 2 / follower.info.desired_Deceleration / 2 + \
+            min_back_distance = (follower.vel - vehicle.vel) ** 2 / follower.info.desired_deceleration / 2 + \
                                 follower.info.dis_stop
             if min_back_distance > follower_dis:
                 return False
@@ -114,12 +115,12 @@ class Road:
     def manual_shift_to_R(self, vehicle: Vehicle):
         run_car_info = vehicle.info
         if vehicle.vel_h < vehicle.vd_h - vehicle.info.vdcl_h:  # (希望速度-vdcl_h) km/h より遅いか
-            if vehicle.accel <= 0 and vehicle.front_car is not None:
+            if vehicle.accel <= 0 and vehicle.front_veh is not None:
                 # 前方に車両がある（なければその車線を走ってれば加速できるため）かつ減速している（加速している場合はその車線を走れば速度が上がるため）
-                if vehicle.front_car.shift_lane is False:
-                    next_car, prev_car = self.getneighbors(vehicle=vehicle,
-                                                           dst_lane=vehicle.lane + 1)  # next_carのみ必要（next_car:車線変更先の前方車両）
-                    if next_car is None or next_car.vel_h - vehicle.front_car.vel_h > run_car_info.vdcl_h:  # ?
+                if vehicle.front_veh.shift_lane is False:
+                    leader, follower = self.getneighbors(vehicle=vehicle,
+                                                         dst_lane=vehicle.lane + 1)  # next_carのみ必要（leader:車線変更先の前方車両）
+                    if leader is None or leader.vel_h - vehicle.front_veh.vel_h > run_car_info.vdcl_h:  # ?
                         # 車線変更先の前方車両が現在の前方車両より 5km/h　以上速い場合
                         if self.canshift(vehicle=vehicle, dst_lane=vehicle.lane + 1):  # ? 物理的に車線変更できるか
                             if generate_random(per=0.5):  # ? みんながみんな車線変更するわけではないので確率を当てる
@@ -128,7 +129,8 @@ class Road:
                                 vehicle.change_vd(controller=self.controller, lane=vehicle.lane + 1)
                                 vehicle.shift_begin_time = self.time
                                 run_car_info.mode = 2
-
+                                if not follower is None:
+                                    follower.shift_front_veh = vehicle
                                 return True
         return False
 
@@ -141,7 +143,7 @@ class Road:
         lm = self.lm
         accel_ls: List[Accel] = []
 
-        target_car = veh.front_car
+        target_car = veh.front_veh
         dd = veh.calculate_dd()
         car_accel = veh.calculate_accel()
 
@@ -150,19 +152,18 @@ class Road:
         # ** 基地局を用いない合流の車両加速度計算
         if veh.lane == 0 and lm.acceleration_lane_start < veh.front < lm.acceleration_lane_end and car_accel >= 0:  # * 合流可能な範囲に入って前方車両がいなければ最大加速度で加速する
             if (veh.vel ** 2 / 3.8) / 2 + 5 < (lm.acceleration_lane_end - veh.front):
+                shifting_veh, follower = self.getneighbors(vehicle=veh, dst_lane=1)
                 if self.canshift(vehicle=veh, dst_lane=veh.lane + 1):
                     car_accel = veh_info.max_accel
                 else:
                     car_accel = 0
-                leader, follower = self.getneighbors(vehicle=veh, dst_lane=1)
-                dd = veh.calculate_dd(target_car=leader)
-                accel_ls.append(Accel(accel=car_accel, target_veh=leader, desired_distance=dd))
+                dd = veh.calculate_dd(target_car=shifting_veh)
+                accel_ls.append(Accel(accel=car_accel, target_veh=shifting_veh, desired_distance=dd))
 
         if not veh.lane == 0:
-
             if veh.shift_lane is True:  # * 本線を走行してかつ車線変更をしようとしている車両
-                leader, follower = self.getneighbors(vehicle=veh, dst_lane=veh.shift_lane_to)
-                target_car = leader if leader is not None else lm.invisible_car
+                shifting_veh, follower = self.getneighbors(vehicle=veh, dst_lane=veh.shift_lane_to)
+                target_car = shifting_veh if shifting_veh is not None else lm.invisible_car
 
                 distance_next_car = target_car.back - veh.front
                 dd_next_veh = veh.calculate_dd(target_car=target_car)
@@ -177,33 +178,29 @@ class Road:
 
             elif veh.shift_lane is False:  # *　本線を走行してかつ車線変更していない車両
                 if not veh.ego == 1:
-                    leader, follower = self.getneighbors(vehicle=veh,
-                                                         dst_lane=veh.lane - 1)  # ! lane - 1としているのは合流部において右側にしか車線変更しない条件化でのみ有効
-                    if leader is not None \
-                            and leader.shift_lane_to == veh.lane \
-                            and leader.target_car == veh.front_car:
 
-                        distance_next_car = leader.back - veh.front
-                        dd_next_car = veh.calculate_dd(target_car=leader)
+                    if veh.shift_front_veh is not None:
+                        shifting_veh = veh.shift_front_veh
+                        distance_next_car = shifting_veh.back - veh.front
+                        dd_next_car = veh.calculate_dd(target_car=shifting_veh)
 
                         if distance_next_car < 0:
                             car_accel = -0.5
                         else:
-                            car_accel = veh.calculate_accel(target_car=leader,
+                            car_accel = veh.calculate_accel(target_car=shifting_veh,
                                                             desired_vehicle_distance=dd_next_car)
 
-                        if dd_next_car < distance_next_car:
-                            accel_ls.append(Accel(accel=car_accel, target_veh=target_car, desired_distance=dd_next_car))
+                        accel_ls.append(Accel(accel=car_accel, target_veh=shifting_veh, desired_distance=dd_next_car))
 
         # **以下は基地局を使った譲るなどを考慮したになにか入れる)
         # ** 加速車線の車両
         if veh.type == 1:
             if veh.lane == 0:
-                app_car = veh.app_car
+                app_car = veh.app_veh
                 if app_car is not None:  # * 譲ってくれる車両が存在するとき and 自車（合流車両）が自動運転車両の時(手動の時は制御なし)
                     if app_car.lane == 1:  # * app_carが第一走行車線にいるとき
                         if app_car.info.mode == 4:  # * app_carが減速制御を行っている場合
-                            app_front_car = app_car.front_car
+                            app_front_car = app_car.front_veh
 
                             if app_front_car is None:
                                 app_front_car = lm.invisible_car
@@ -231,11 +228,11 @@ class Road:
 
                             accel_ls.append(Accel(accel=car_accel, target_veh=app_car, desired_distance=dd_app_car))
                     else:  # *app_carが第一走行車線にいないとき(基本的にない)
-                        veh.app_car.apped_car = None
-                        veh.app_car = None
+                        veh.app_veh.apped_veh = None
+                        veh.app_veh = None
 
             elif veh.lane == 1:
-                apped_car = veh.apped_car
+                apped_car = veh.apped_veh
                 if apped_car is not None:
                     if apped_car.lane == 0:
                         if veh_info.mode == 4:  # * 自車（譲る車両）が減速制御を行っているとき
@@ -251,29 +248,29 @@ class Road:
                         elif veh_info.mode == 3:  # *自車（譲る車両）が加速制御を行っている場合
                             distance_merge_car = veh.back - apped_car.front
                             if distance_merge_car < 0:
-                                accel_ls.append(Accel(accel=1.0, target_veh=veh.front_car,
+                                accel_ls.append(Accel(accel=1.0, target_veh=veh.front_veh,
                                                       desired_distance=veh.calculate_dd()))
 
                     else:  # * 合流車両が合流車線にいないとき（↑と比べてこっちは合流終了時にこの条件に入る）
-                        veh.apped_car.app_car = None
-                        veh.apped_car = None
+                        veh.apped_veh.app_veh = None
+                        veh.apped_veh = None
                         veh.info.mode = 0
 
         min_accel: Accel = min(accel_ls, key=lambda x: x.accel)
         if veh.type == 0 and veh.lane == 0 and veh.front < lm.acceleration_lane_start and min_accel.accel < 0:
             min_accel.accel = 0
         veh.accel = min_accel.accel
-        veh.target_car = min_accel.target_veh
+        veh.target_veh = min_accel.target_veh
         veh.desired_distance = min_accel.desired_dis
 
     def check_flag(self, veh: Vehicle):
         """
         最大加速度で自動運転車両が加速したとき合流車両を追い越すことができるか判定する関数
         """
-        apped_car = veh.apped_car
+        apped_car = veh.apped_veh
         run_car_info = veh.info
 
-        if veh.apped_car is not None:
+        if veh.apped_veh is not None:
 
             x1 = self.lm.acceleration_lane_start - apped_car.back
             t1 = x1 / apped_car.vel
@@ -304,7 +301,9 @@ class Road:
                         if vehicle.lane == 0:
                             if lm.acceleration_lane_start < vehicle.back:
                                 if self.canshift(vehicle=vehicle, dst_lane=vehicle.lane + 1):
-                                    vehicle.shift_begin(shift_lane_to=vehicle.lane + 1, time=self.time)
+                                    leader, follower = self.getneighbors(vehicle=vehicle, dst_lane=vehicle.lane + 1)
+                                    vehicle.shift_begin(shift_lane_to=vehicle.lane + 1, time=self.time,
+                                                        follower=follower)
 
                             elif lm.acceleration_lane_start < vehicle.front and vehicle_info.mode != 1:
                                 prev_vd = vehicle.vd
@@ -318,7 +317,7 @@ class Road:
                                   vehicle_info.vel_sensor_flag == 0 and
                                   self.controller.merging_control):
                                 vehicle_info.vel_sensor_flag = 1
-                                if vehicle.app_car is None:
+                                if vehicle.app_veh is None:
                                     cep = vehicle.front + 10
                                     csp = vehicle.back - lm.communication_area
 
@@ -330,7 +329,7 @@ class Road:
 
                                     if not app_ls == []:
                                         app_car = min(app_ls, key=lambda veh: veh[1])[0]
-                                        app_car.apped_car = vehicle
+                                        app_car.apped_veh = vehicle
                                         dc.set_cd(id=vehicle.id, csp=csp, cep=cep)
 
                         elif vehicle.lane == 1:
@@ -353,7 +352,9 @@ class Road:
                         if vehicle.lane == 0:
                             if lm.acceleration_lane_start < vehicle.back:
                                 if self.canshift(vehicle=vehicle, dst_lane=vehicle.lane + 1):
-                                    vehicle.shift_begin(shift_lane_to=vehicle.lane + 1, time=self.time)
+                                    leader, follower = self.getneighbors(vehicle=vehicle, dst_lane=vehicle.lane + 1)
+                                    vehicle.shift_begin(shift_lane_to=vehicle.lane + 1, time=self.time,
+                                                        follower=follower)
 
                             elif lm.acceleration_lane_start < vehicle.front and vehicle_info.mode != 1:
                                 prev_vd = vehicle.vd
@@ -367,7 +368,7 @@ class Road:
                                   vehicle_info.vel_sensor_flag == 0 and
                                   self.controller.merging_control):
                                 vehicle_info.vel_sensor_flag = 1
-                                if vehicle.app_car is None:
+                                if vehicle.app_veh is None:
                                     cep = vehicle.front + 10
                                     csp = vehicle.back - lm.communication_area
 
@@ -379,8 +380,8 @@ class Road:
 
                                     if not app_ls == []:
                                         app_car = min(app_ls, key=lambda veh: veh[1])[0]
-                                        vehicle.app_car = app_car
-                                        app_car.apped_car = vehicle
+                                        vehicle.app_veh = app_car
+                                        app_car.apped_veh = vehicle
                                         dc.set_cd(id=vehicle.id, csp=csp, cep=cep)
 
                         elif vehicle.lane == 1:
@@ -388,8 +389,8 @@ class Road:
                                 if vehicle.back > lm.vel_sensor_point:
                                     if vehicle_info.mode == 0 or vehicle_info.mode == 5:
                                         vehicle.change_vd(lane=vehicle.lane, controller=self.controller, extra_code=1)
-                                        if vehicle.apped_car is not None:
-                                            apped_car = vehicle.apped_car
+                                        if vehicle.apped_veh is not None:
+                                            apped_car = vehicle.apped_veh
                                             if apped_car.info.type == 0:
                                                 if (apped_car.back - vehicle.front < 5 and
                                                         vehicle.vel > apped_car.vel):  # ? 加速して後ろに譲る
@@ -410,12 +411,12 @@ class Road:
 
                             elif self.controller.distance_control:  # 車間距離制御
                                 if vehicle.info.tau_changed_flag is False:
-                                    if lm.third_control_point < vehicle.front < lm.vel_sensor_point and vehicle.apped_car is None:
-                                        if vehicle.back_car is not None and vehicle.back_car.type == 0:
+                                    if lm.third_control_point < vehicle.front < lm.vel_sensor_point and vehicle.apped_veh is None:
+                                        if vehicle.back_veh is not None and vehicle.back_veh.type == 0:
                                             vehicle.change_tau(2.0)
 
-                                if vehicle.apped_car is not None:
-                                    apped_car = vehicle.apped_car
+                                if vehicle.apped_veh is not None:
+                                    apped_car = vehicle.apped_veh
                                     if apped_car.back - vehicle.front < 5 and vehicle.vel > apped_car.vel:
                                         vehicle_info.mode = 3
                                         vehicle.change_tau(1.0)
@@ -423,7 +424,7 @@ class Road:
                                     else:
                                         vehicle_info.mode = 4
                                 else:
-                                    if vehicle.back > lm.vel_sensor_point:
+                                    if vehicle.back > lm.vel_sensor_point and not vehicle_info.mode == 3:
                                         vehicle_info.mode = 3
                                         vehicle.change_tau(1.0)
                                         vehicle.set_vd(vehicle.vd + 20 / 3.6)
@@ -436,9 +437,9 @@ class Road:
                                     next_car, prev_car = self.getneighbors(vehicle=vehicle,
                                                                            dst_lane=vehicle.lane - 1)
 
-                                    if ((next_car is not None and prev_car is not None) and
-                                            (next_car.info.type == 0 and prev_car.info.type == 0) and
-                                            (next_car.vel_h > 90 and prev_car.vel_h > 90)):
+                                    if (next_car is not None and prev_car is not None) \
+                                            and (next_car.info.type == 0 and prev_car.info.type == 0) \
+                                            and (next_car.vel_h > 90 and prev_car.vel_h > 90):
 
                                         if self.canshift(vehicle=vehicle, dst_lane=vehicle.lane - 1):
                                             second_control_car_ls_tmp.append(vehicle)
@@ -449,14 +450,19 @@ class Road:
                 dc.set_min_vel(id=vehicle.id, vel=vehicle.vel)
 
                 vehicle.update_car(time=time)
-
-            if not second_control_car_ls_tmp == [] and len(lm.second_control_car_ls) < lm.second_control_car_limit:
-                check_car = second_control_car_ls_tmp[-1]
-                check_car.shift_begin(shift_lane_to=check_car.lane - 1, time=time)
-                check_car.change_vd(lane=1, controller=self.controller)
-                check_car.info.mode = 2
-                lm.second_control_car_ls.append(check_car)
-                self.second_ct_ls.append(check_car.id)
+                if vehicle.shift_lane:
+                    leader, follower = self.getneighbors(vehicle=vehicle, dst_lane=vehicle.shift_lane_to)
+                    # if follower is not None:
+                    # todo 車線変更される車両だけでなく車線変更する車両にも車線変更先のfollowerを記録させNoneだった時の対処を記載する
+            if self.controller.lc_control:
+                if not second_control_car_ls_tmp == [] and len(lm.second_control_car_ls) < lm.second_control_car_limit:
+                    check_car = second_control_car_ls_tmp[-1]
+                    leader, follower = self.getneighbors(vehicle=check_car, dst_lane=check_car.lane - 1)
+                    check_car.shift_begin(shift_lane_to=check_car.lane - 1, time=time, follower=follower)
+                    check_car.change_vd(lane=1, controller=self.controller)
+                    check_car.info.mode = 2
+                    lm.second_control_car_ls.append(check_car)
+                    self.second_ct_ls.append(check_car.id)
 
             if time % self.interval == 0:
                 self.vehlog.append(lm.run_vehicle_ls)
@@ -471,7 +477,7 @@ class Road:
 
         path = create_path(seed=seed, lm=lm, dir_name=dir_name)
         wb = Workbook()
-        # create_info_sheet(wb=wb, lm=lm, time_max=time_max)
+        create_info_sheet(wb=wb, lm=lm, time_max=time_max)
 
         # create_lane_vel_sheet(wb=wb, vehlog=vehlog, lm=lm, time_max=time_max, interval=interval)
         create_merging_info_sheet(wb=wb, vehlog=vehlog, dc=dc, lm=lm, time_max=time_max)

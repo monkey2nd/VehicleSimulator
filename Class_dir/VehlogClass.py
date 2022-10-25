@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, List, NamedTuple
 
 from Class_dir.VehicleClass import Vehicle
@@ -15,12 +17,13 @@ class Vehtpl(NamedTuple):
     desired_distance: float
     delta_v: float
     tau: float
-    front_car_id: int
-    back_car_id: int
-    target_car_id: int
-    app_car_id: int
-    apped_car_id: int
-    shift_lane: int
+    front_car_id: int | None
+    back_car_id: int | None
+    target_car_id: int | None
+    app_car_id: int | None
+    apped_car_id: int | None
+    shift_front_veh_id: int | None
+    shift_lane: bool
     shift_lane_to: int
     shift_begin_time: int
     shift_distance_go: float
@@ -53,14 +56,15 @@ def make_vehtpl(veh_cls: Vehicle):
     return Vehtpl(veh_cls.id, veh_cls.front, veh_cls.lane, veh_cls.vel, veh_cls.vd, veh_cls.accel,
                   veh_cls.info.vdcl,
                   veh_cls.distance,
-                  veh_cls.desired_distance, veh_cls.delta_v, veh_cls.tau,
-                  veh_cls.front_car.id if veh_cls.front_car is not None else -1,
-                  veh_cls.back_car.id if veh_cls.back_car is not None else -1,
-                  veh_cls.target_car.id if veh_cls.target_car is not None else -1,
-                  veh_cls.app_car.id if veh_cls.app_car is not None else -1,
-                  veh_cls.apped_car.id if veh_cls.apped_car is not None else -1,
+                  veh_cls.desired_distance, veh_cls.delta_v_h, veh_cls.tau,
+                  veh_cls.front_veh.id if veh_cls.front_veh is not None else None,
+                  veh_cls.back_veh.id if veh_cls.back_veh is not None else None,
+                  veh_cls.target_veh.id if veh_cls.target_veh is not None else None,
+                  veh_cls.app_veh.id if veh_cls.app_veh is not None else None,
+                  veh_cls.apped_veh.id if veh_cls.apped_veh is not None else None,
+                  veh_cls.shift_front_veh.id if veh_cls.shift_front_veh is not None else None,
                   veh_cls.shift_lane, veh_cls.shift_lane_to, veh_cls.shift_begin_time, veh_cls.shift_distance_go,
-                  veh_cls.control_mode, veh_cls.type, veh_cls.ego)
+                  veh_cls.info.mode, veh_cls.type, veh_cls.ego)
 
 
 class Vehlog:

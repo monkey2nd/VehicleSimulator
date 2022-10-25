@@ -337,8 +337,8 @@ def create_log_sheet(wb: Workbook, vehlog: Vehlog, time_max):
     ws = wb.create_sheet(title="log_sheet")
     row = 1
 
-    list_ = ["時間", "Id", "前方位置", "車線", "車両タイプ", "速度", "希望速度", "車線変更閾値", "加速度",
-             "車間", "希望車間距離", "相対速度", "希望車頭時間", "前方車両ID", "後方車両ID", "目標車両ID",
+    list_ = ["時間", "Id", "前方位置", "車線", "車両タイプ", "加速度", "速度", "希望速度", "車線変更閾値", "車間",
+             "希望車間距離", "相対速度", "希望車頭時間", "前方車両ID", "後方車両ID", "目標車両ID", "前方車線変更車両",
              "車線変更途中", "車線変更先", "車線変更開始時間", "車線変更先車間距離", "mode", "ego"]
 
     for col_tmp, list_tmp in enumerate(list_, 1):  # 1行目の文字の部分の書き込み col_tmpは1からスタートする
@@ -348,12 +348,10 @@ def create_log_sheet(wb: Workbook, vehlog: Vehlog, time_max):
     for time in range(0, time_max):
         for vehicle in vehlog.get_logvalues(time):  # ID0は除外,車の台数分ループ
             ws.cell(row=row, column=1).value = (time / 10)  # 最も左の列の時間の部分
-            data_ls = [time, vehicle.id, vehicle.front, vehicle.lane, vehicle.type,
-                       vehicle.vel_h, vehicle.vd_h, vehicle.vdcl_h, vehicle.accel, vehicle.distance,
+            data_ls = [time, vehicle.id, vehicle.front, vehicle.lane, vehicle.type, vehicle.accel,
+                       vehicle.vel_h, vehicle.vd_h, vehicle.vdcl_h, vehicle.distance,
                        vehicle.desired_distance, vehicle.delta_v, vehicle.tau,
-                       vehicle.front_car_id if vehicle.front_car_id != -1 else None,
-                       vehicle.back_car_id if vehicle.back_car_id != -1 else None,
-                       vehicle.target_car_id if vehicle.target_car_id != -1 else None,
+                       vehicle.front_car_id, vehicle.back_car_id, vehicle.target_car_id, vehicle.shift_front_veh_id,
                        vehicle.shift_lane, vehicle.shift_lane_to, vehicle.shift_begin_time,
                        vehicle.shift_distance_go, vehicle.mode, vehicle.ego]
 
@@ -510,6 +508,7 @@ def deceleration_log_sheet(wb: Workbook, dc: DataCollect, lm: LaneManager):
 
         ws.cell(row=2, column=column).value = value
         ws.cell(row=3, column=column).value = value / lm.get_q(0)
+    ws.auto_filter.ref = "E1:E" + str(ws.max_row)
 
 
 def lane_penetration_log(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max):

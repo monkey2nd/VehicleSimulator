@@ -18,11 +18,12 @@ class Vehicle:
         self.desired_distance = 0
         self.delta_v = 0  # 6相対速度
         self.tau = 1.0
-        self.front_car: Vehicle | None = None  # 7 前方車両
-        self.back_car: Vehicle | None = None  # 8 後方車両
-        self.target_car: Vehicle | None = None  # 9 目標車両
-        self.app_car: Vehicle | None = None  # 10 基地局を用いたときに通信を行う合流車両Carクラス
-        self.apped_car: Vehicle | None = None  # 11 基地局を用いたときに通信を行う譲る車両Carクラス
+        self.front_veh: Vehicle | None = None  # 7 前方車両
+        self.back_veh: Vehicle | None = None  # 8 後方車両
+        self.target_veh: Vehicle | None = None  # 9 目標車両
+        self.app_veh: Vehicle | None = None  # 10 基地局を用いたときに通信を行う合流車両クラス
+        self.apped_veh: Vehicle | None = None  # 11 基地局を用いたときに通信を行う譲る車両クラス
+        self.shift_front_veh: Vehicle | None = None  # 自社の目の前に車線変更してくる車両クラス
         self.shift_lane: bool = False  # 10 車線変更してる途中かどうか
         self.shift_lane_to = 0  # 11 どこの車線に変更しようとしてるか
         self.shift_begin_time = 0  # 12 車線変更開始時間
@@ -80,6 +81,7 @@ class Vehicle:
         return self._control_mode
 
     def set_vd(self, vd):
+        vd = round(vd, 2)
         self.__vd = vd
 
     def change_tau(self, tau):
@@ -95,11 +97,11 @@ class Vehicle:
 
     def set_distance(self) -> None:
         # * front_carとの相対距離を求めdistanceに格納
-        self.distance = self.front_car.back - self.front
+        self.distance = self.front_veh.back - self.front
 
     def cal_delta_v(self) -> None:
         # * front_carとの相対速度を求めdelta_vに格納
-        self.delta_v = self.vel - self.front_car.vel
+        self.delta_v = self.vel - self.front_veh.vel
 
     @staticmethod
     def make_vd(min_vel, max_vel):
@@ -168,7 +170,7 @@ class Vehicle:
 
     def set_delta_v(self, acceleration_lane_end) -> None:
         # * front_carの存在を加味し適切なdelta_vを格納する関数
-        if self.front_car is None:
+        if self.front_veh is None:
             if self.lane == 0 and (((self.vel ** 2) / 3.8) / 2 + 5 > (acceleration_lane_end - self.front)):
                 self.delta_v = self.vel
             else:
@@ -189,7 +191,7 @@ class Vehicle:
         treac = run_car_info.driver_reaction_time
         delta_v = self.delta_v if target_car is None else self.vel - target_car.vel
         a = run_car_info.max_accel
-        b = run_car_info.desired_Deceleration
+        b = run_car_info.desired_deceleration
         # ? s0:停止時最小車間距離　v:車両速度　t:安全車頭時間　treac:反応時間　delta_v:相対速度　a,最大加速度　b,希望減速度
 
         return round(s0 + v * (t + treac) + ((v * delta_v) / (((a * b) ** 0.5) * 2)), 1)
@@ -224,10 +226,12 @@ class Vehicle:
 
         return accel
 
-    def shift_begin(self, shift_lane_to, time) -> None:
+    def shift_begin(self, shift_lane_to, time, follower: Vehicle | None = None) -> None:
         self.shift_lane = True
         self.shift_lane_to = shift_lane_to
         self.shift_begin_time = time
+        if follower is not None:
+            follower.shift_front_veh = self
 
     def canonicalize(self) -> None:
         self.distance = round(self.distance, 2)
@@ -245,17 +249,20 @@ class Vehicle:
             self.shift_lane_to = self.shift_begin_time = self.shift_distance_go = 0
             self.shift_lane = False
             run_car_info.mode = 0
-            if self.app_car is not None:
+            if self.app_veh is not None:
                 self.info.mode = 0
-                self.app_car.info.mode = 0
-                self.app_car.apped_car = None
-                self.app_car = None
+                self.app_veh.info.mode = 0
+                self.app_veh.apped_veh = None
+                self.app_veh = None
+
+        if self.shift_front_veh is self.front_veh:  # 前方に車線変更してくる車両が車線変更し終わったら
+            self.shift_front_veh = None
 
         # ! 衝突時条件
-        if self.front_car is not None:
-            if self.front_car.back < self.front < self.front_car.front:
-                if self.vel > self.front_car.vel:
-                    self.vel = self.front_car.vel
+        if self.front_veh is not None:
+            if self.front_veh.back < self.front < self.front_veh.front:
+                if self.vel > self.front_veh.vel:
+                    self.vel = self.front_veh.vel
 
 
 class VehicleInfo:
@@ -263,7 +270,7 @@ class VehicleInfo:
         self.id: int = veh_id  # 0:Id
         self.max_accel = 0  # 1:最大加速度
         self.max_deceleration = 1.5  # ? 最大限速度
-        self.desired_Deceleration = 0  # 2:希望減速度
+        self.desired_deceleration = 0  # 2:希望減速度
         self.driver_reaction_time = 0  # 4:反応時間
         self.dis_stop = 1.65  # 5:停止時最低車間距離
         self.v_init = 0  # 6:初期速度

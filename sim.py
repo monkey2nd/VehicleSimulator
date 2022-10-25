@@ -1,6 +1,5 @@
 from datetime import datetime
 
-import Line_notification as line
 from Class_dir.Controller import Controller
 from cal import simulation
 
@@ -30,11 +29,11 @@ if __name__ == "__main__":
     # car_max_ls = range(500, 601, 50)
     # car_max_ls = [750]
     # todo veh_max_lsにて車両数を増やし事故が発生するパターンを確認するまた手動運転車両の挙動についても確認
-    veh_max_ls = [700]
+    veh_max_ls = [750]
 
     penetration_ls = [0.3]
 
-    merging_ratio_ls = [0]  # ** 合流車両の普及率(0-1)
+    merging_ratio_ls = [0.5]  # ** 合流車両の普及率(0-1)
 
     # seed_ls = range(10)
     seed_ls = [11]
@@ -45,10 +44,13 @@ if __name__ == "__main__":
 
     sim_time = 1  # ? シミュレーションを行っている回数
 
-    sim_time_max = len(veh_max_ls) * len(penetration_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(
-        ego_ls)
+    sim_time_max = len(veh_max_ls) * len(penetration_ls) * \
+                   len(merging_ratio_ls) * len(seed_ls) * \
+                   len(q_lane0_ls) * len(ego_ls)
+
     interval_log = 10  # (0.1s)
     controller = Controller()
+    # controller.lc_control = False
     for CAR_MAX in veh_max_ls:
         for penetration in penetration_ls:
             for merging_ratio in merging_ratio_ls:
@@ -68,5 +70,5 @@ if __name__ == "__main__":
                             sim_time += 1
 
     # result.make_result(dir_name=dir_name, penetration_ls=penetration_ls, car_max_ls=car_max_ls, seed_ls=seed_ls)
-    line.notify()
+    # line.notify()
     print("終了")

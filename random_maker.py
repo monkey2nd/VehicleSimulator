@@ -5,7 +5,7 @@ def generate_random(per) -> int:
     return 1 if per > random.random() else 0
 
 
-def vd_make(min_vel: int, max_vel: int) -> int:
+def vd_make(min_vel: int, max_vel: int) -> float:
     return round(random.uniform(min_vel / 3.6, max_vel / 3.6), 2)
 
 
@@ -15,8 +15,3 @@ def generate_shifttime():
 
 def get_clvd(min_vel=3, max_vel=10):
     return round(random.uniform(min_vel / 3.6, max_vel / 3.6), 2)
-
-
-
-
-

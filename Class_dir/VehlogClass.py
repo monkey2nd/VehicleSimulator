@@ -67,11 +67,11 @@ class Vehlog:
     def __init__(self):
         self.log: List[Dict[int, Vehtpl]] = []  # 時間軸ごとにnamedtupleが入る
 
-    def set(self, tupdic: Dict[int, NamedTuple]) -> None:
+    def set(self, tupdic: Dict[int, Vehtpl]) -> None:
         self.log.append(tupdic)
 
     def append(self, veh_ls: List[Vehicle]):
-        log_dic: Dict[int, NamedTuple] = {}
+        log_dic: Dict[int, Vehtpl] = {}
         for vehicle in veh_ls:
             log_dic[vehicle.id] = make_vehtpl(veh_cls=vehicle)
         self.set(tupdic=log_dic)

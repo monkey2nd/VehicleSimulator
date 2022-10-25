@@ -6,7 +6,7 @@ from cal import simulation
 
 
 def sim(CAR_MAX, merging_ratio, penetration, ego, seed, dir_name, q_lane0, interval, controller: Controller):
-    simulation(CAR_MAX=CAR_MAX, q_lane0=q_lane0, merging_ratio=merging_ratio, penetration=penetration, ego=ego,
+    simulation(veh_max=CAR_MAX, q_lane0=q_lane0, merging_ratio=merging_ratio, penetration=penetration, ego=ego,
                seed=seed, dir_name=dir_name, interval=interval, controller=controller)
 
 
@@ -29,9 +29,10 @@ if __name__ == "__main__":
     # car_max_ls = range(450, 550 + 1, 50)
     # car_max_ls = range(500, 601, 50)
     # car_max_ls = [750]
-    car_max_ls = [700]
+    # todo veh_max_lsにて車両数を増やし事故が発生するパターンを確認するまた手動運転車両の挙動についても確認
+    veh_max_ls = [700]
 
-    penetration_ls = [0]
+    penetration_ls = [0.3]
 
     merging_ratio_ls = [0]  # ** 合流車両の普及率(0-1)
 
@@ -44,12 +45,11 @@ if __name__ == "__main__":
 
     sim_time = 1  # ? シミュレーションを行っている回数
 
-    sim_time_max = len(car_max_ls) * len(penetration_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(
+    sim_time_max = len(veh_max_ls) * len(penetration_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(
         ego_ls)
     interval_log = 10  # (0.1s)
-    # todo 各制御ごとに制御オプションを追加
     controller = Controller()
-    for CAR_MAX in car_max_ls:
+    for CAR_MAX in veh_max_ls:
         for penetration in penetration_ls:
             for merging_ratio in merging_ratio_ls:
                 for ego in ego_ls:

@@ -13,11 +13,9 @@ from Class_dir.VehicleClass import Vehicle
 from Class_dir.VehlogClass import Vehlog
 from random_maker import generate_random
 from save import create_avg_vel_log, create_log_sheet, create_merging_info_sheet, create_path, create_visual_sheet, \
-    deceleration_log_sheet, \
-    lane_penetration_log
+    deceleration_log_sheet, lane_penetration_log
 
 
-# noinspection PyTypeChecker
 class Road:
     def __init__(self, time_max, interval, controller: Controller) -> None:
         self.dc = None
@@ -30,8 +28,9 @@ class Road:
         self.controller: Controller = controller
 
     def lm_init(self, car_max, q_lane0, merging_ratio, penetration, ego, seed):
-        self.lm = LaneManager(lane_num=4, merging_ratio=merging_ratio, penetration=penetration, ego_ratio=ego,
-                              seed=seed)
+        self.lm = LaneManager(lane_num=4, controller=self.controller, merging_ratio=merging_ratio,
+                              penetration=penetration,
+                              ego_ratio=ego, seed=seed)
         self.lm.make_q_lane_ls(car_max=car_max, q_lane0=q_lane0)
         self.lm.set_frequency(time_max=self.TIME_MAX, )
         self.lm.make_car_timetable()
@@ -133,74 +132,74 @@ class Road:
                                 return True
         return False
 
-    def calculate_accel(self, run_car: Vehicle):
+    def calculate_accel(self, veh: Vehicle):
         """
         run_carの加速度を決定する関数
         """
         # ** 全車両対応追従用加速度計算
-        run_car_info = run_car.info
+        veh_info = veh.info
         lm = self.lm
         accel_ls: List[Accel] = []
 
-        target_car = run_car.front_car
-        dd = run_car.calculate_dd()
-        car_accel = run_car.calculate_accel()
+        target_car = veh.front_car
+        dd = veh.calculate_dd()
+        car_accel = veh.calculate_accel()
 
         accel_ls.append(Accel(accel=car_accel, target_veh=target_car, desired_distance=dd))
 
         # ** 基地局を用いない合流の車両加速度計算
-        if run_car.lane == 0 and lm.acceleration_lane_start < run_car.front < lm.acceleration_lane_end and car_accel >= 0:  # * 合流可能な範囲に入って前方車両がいなければ最大加速度で加速する
-            if (run_car.vel ** 2 / 3.8) / 2 + 5 < (lm.acceleration_lane_end - run_car.front):
-                if self.canshift(vehicle=run_car, dst_lane=run_car.lane + 1):
-                    car_accel = run_car_info.max_accel
+        if veh.lane == 0 and lm.acceleration_lane_start < veh.front < lm.acceleration_lane_end and car_accel >= 0:  # * 合流可能な範囲に入って前方車両がいなければ最大加速度で加速する
+            if (veh.vel ** 2 / 3.8) / 2 + 5 < (lm.acceleration_lane_end - veh.front):
+                if self.canshift(vehicle=veh, dst_lane=veh.lane + 1):
+                    car_accel = veh_info.max_accel
                 else:
                     car_accel = 0
-                leader, follower = self.getneighbors(vehicle=run_car, dst_lane=1)
-                dd = run_car.calculate_dd(target_car=leader)
+                leader, follower = self.getneighbors(vehicle=veh, dst_lane=1)
+                dd = veh.calculate_dd(target_car=leader)
                 accel_ls.append(Accel(accel=car_accel, target_veh=leader, desired_distance=dd))
 
-        if not run_car.lane == 0:
+        if not veh.lane == 0:
 
-            if run_car.shift_lane is True:  # * 本線を走行してかつ車線変更をしようとしている車両
-                leader, follower = self.getneighbors(vehicle=run_car, dst_lane=run_car.shift_lane_to)
+            if veh.shift_lane is True:  # * 本線を走行してかつ車線変更をしようとしている車両
+                leader, follower = self.getneighbors(vehicle=veh, dst_lane=veh.shift_lane_to)
                 target_car = leader if leader is not None else lm.invisible_car
 
-                distance_next_car = target_car.back - run_car.front
-                dd_next_veh = run_car.calculate_dd(target_car=target_car)
-                car_accel = -0.5 if distance_next_car < 0 else run_car.calculate_accel(
+                distance_next_car = target_car.back - veh.front
+                dd_next_veh = veh.calculate_dd(target_car=target_car)
+                car_accel = -0.5 if distance_next_car < 0 else veh.calculate_accel(
                     desired_vehicle_distance=dd_next_veh, target_car=target_car)
 
-                if dd_next_veh > distance_next_car and (run_car.delta_v <= 0 or
-                                                        run_car.distance / run_car.vel >
-                                                        run_car.shift_begin_time + 40 - self.time):
-                    run_car.shift_distance_go = distance_next_car
+                if dd_next_veh > distance_next_car and (veh.delta_v <= 0 or
+                                                        veh.distance / veh.vel >
+                                                        veh.shift_begin_time + 40 - self.time):
+                    veh.shift_distance_go = distance_next_car
                     accel_ls.append(Accel(accel=car_accel, target_veh=target_car, desired_distance=dd_next_veh))
 
-            elif run_car.shift_lane is False:  # *　本線を走行してかつ車線変更していない車両
-                if not run_car.ego == 1:
-                    leader, follower = self.getneighbors(vehicle=run_car,
-                                                         dst_lane=run_car.lane - 1)  # ! lane - 1としているのは合流部において右側にしか車線変更しない条件化でのみ有効
+            elif veh.shift_lane is False:  # *　本線を走行してかつ車線変更していない車両
+                if not veh.ego == 1:
+                    leader, follower = self.getneighbors(vehicle=veh,
+                                                         dst_lane=veh.lane - 1)  # ! lane - 1としているのは合流部において右側にしか車線変更しない条件化でのみ有効
                     if leader is not None \
-                            and leader.shift_lane_to == run_car.lane \
-                            and leader.target_car == run_car.front_car:
+                            and leader.shift_lane_to == veh.lane \
+                            and leader.target_car == veh.front_car:
 
-                        distance_next_car = leader.back - run_car.front
-                        dd_next_car = run_car.calculate_dd(target_car=leader)
+                        distance_next_car = leader.back - veh.front
+                        dd_next_car = veh.calculate_dd(target_car=leader)
 
                         if distance_next_car < 0:
                             car_accel = -0.5
                         else:
-                            car_accel = run_car.calculate_accel(target_car=leader,
-                                                                desired_vehicle_distance=dd_next_car)
+                            car_accel = veh.calculate_accel(target_car=leader,
+                                                            desired_vehicle_distance=dd_next_car)
 
                         if dd_next_car < distance_next_car:
                             accel_ls.append(Accel(accel=car_accel, target_veh=target_car, desired_distance=dd_next_car))
-        # 次回　この続きをやる（accellsを用いてaccel適切か）
+
         # **以下は基地局を使った譲るなどを考慮したになにか入れる)
         # ** 加速車線の車両
-        if run_car.type == 1:
-            if run_car.lane == 0:
-                app_car = run_car.app_car
+        if veh.type == 1:
+            if veh.lane == 0:
+                app_car = veh.app_car
                 if app_car is not None:  # * 譲ってくれる車両が存在するとき and 自車（合流車両）が自動運転車両の時(手動の時は制御なし)
                     if app_car.lane == 1:  # * app_carが第一走行車線にいるとき
                         if app_car.info.mode == 4:  # * app_carが減速制御を行っている場合
@@ -208,80 +207,80 @@ class Road:
 
                             if app_front_car is None:
                                 app_front_car = lm.invisible_car
-                            distance_app_front_car = app_front_car.back - run_car.front  # ?app_front_carとの車間距離
-                            dd_app_front_car = run_car.calculate_dd(target_car=app_front_car)
+                            distance_app_front_car = app_front_car.back - veh.front  # ?app_front_carとの車間距離
+                            dd_app_front_car = veh.calculate_dd(target_car=app_front_car)
 
                             if distance_app_front_car < 0:
                                 car_accel = -1.0
                             else:
-                                car_accel = run_car.calculate_accel(target_car=app_front_car,
-                                                                    desired_vehicle_distance=dd_app_front_car)
+                                car_accel = veh.calculate_accel(target_car=app_front_car,
+                                                                desired_vehicle_distance=dd_app_front_car)
 
                             accel_ls.append(Accel(accel=car_accel,
                                                   target_veh=app_front_car,
                                                   desired_distance=dd_app_front_car))
 
                         elif app_car.info.mode == 3:  # * app_carが加速制御を行っている場合
-                            distance_app_car = app_car.back - run_car.front
-                            dd_app_car = run_car.calculate_dd(target_car=app_car)
+                            distance_app_car = app_car.back - veh.front
+                            dd_app_car = veh.calculate_dd(target_car=app_car)
                             if distance_app_car < 0:
-                                car_accel_tmp = -1.0
+                                car_accel = -1.0
                             else:
-                                car_accel_tmp = run_car.calculate_accel(target_car=app_car,
-                                                                        desired_vehicle_distance=dd_app_car)
+                                car_accel = veh.calculate_accel(target_car=app_car,
+                                                                desired_vehicle_distance=dd_app_car)
 
                             accel_ls.append(Accel(accel=car_accel, target_veh=app_car, desired_distance=dd_app_car))
                     else:  # *app_carが第一走行車線にいないとき(基本的にない)
-                        run_car.app_car.apped_car = None
-                        run_car.app_car = None
+                        veh.app_car.apped_car = None
+                        veh.app_car = None
 
-            elif run_car.lane == 1:
-                apped_car = run_car.apped_car
+            elif veh.lane == 1:
+                apped_car = veh.apped_car
                 if apped_car is not None:
                     if apped_car.lane == 0:
-                        if run_car_info.mode == 4:  # * 自車（譲る車両）が減速制御を行っているとき
-                            distance_merge_car = apped_car.back - run_car.front
+                        if veh_info.mode == 4:  # * 自車（譲る車両）が減速制御を行っているとき
+                            distance_merge_car = apped_car.back - veh.front
                             if distance_merge_car < 0:  # * 自車（譲る車両）が前方にいるとき
                                 car_accel = -1.0
                             else:
-                                car_accel = run_car.calculate_accel(target_car=apped_car)
+                                car_accel = veh.calculate_accel(target_car=apped_car)
 
-                            dd = run_car.calculate_dd(target_car=apped_car)
+                            dd = veh.calculate_dd(target_car=apped_car)
                             accel_ls.append(Accel(accel=car_accel, target_veh=apped_car, desired_distance=dd))
 
-                        elif run_car_info.mode == 3:  # *自車（譲る車両）が加速制御を行っている場合
-                            distance_merge_car = run_car.back - apped_car.front
+                        elif veh_info.mode == 3:  # *自車（譲る車両）が加速制御を行っている場合
+                            distance_merge_car = veh.back - apped_car.front
                             if distance_merge_car < 0:
-                                accel_ls.append(Accel(accel=1.0, target_veh=run_car.front_car,
-                                                      desired_distance=run_car.calculate_dd()))
+                                accel_ls.append(Accel(accel=1.0, target_veh=veh.front_car,
+                                                      desired_distance=veh.calculate_dd()))
 
-                else:  # * 合流車両が合流車線にいないとき（↑と比べてこっちは合流終了時にこの条件に入る）
-                    run_car.apped_car.app_car = None
-                    run_car.apped_car = None
-                    run_car.info.mode = 0
+                    else:  # * 合流車両が合流車線にいないとき（↑と比べてこっちは合流終了時にこの条件に入る）
+                        veh.apped_car.app_car = None
+                        veh.apped_car = None
+                        veh.info.mode = 0
 
-        if run_car_info.type == 0 and run_car.lane == 0 and run_car.front < lm.acceleration_lane_start:
-            car_accel = max(car_accel, 0)
         min_accel: Accel = min(accel_ls, key=lambda x: x.accel)
-        run_car.accel = min_accel.accel
-        run_car.target_car = min_accel.target_veh
-        run_car.desired_distance = min_accel.desired_dis
+        if veh.type == 0 and veh.lane == 0 and veh.front < lm.acceleration_lane_start and min_accel.accel < 0:
+            min_accel.accel = 0
+        veh.accel = min_accel.accel
+        veh.target_car = min_accel.target_veh
+        veh.desired_distance = min_accel.desired_dis
 
-    def check_flag(self, run_car: Vehicle):
+    def check_flag(self, veh: Vehicle):
         """
         最大加速度で自動運転車両が加速したとき合流車両を追い越すことができるか判定する関数
         """
-        apped_car = run_car.apped_car
-        run_car_info = run_car.info
+        apped_car = veh.apped_car
+        run_car_info = veh.info
 
-        if run_car.apped_car is not None:
+        if veh.apped_car is not None:
 
             x1 = self.lm.acceleration_lane_start - apped_car.back
             t1 = x1 / apped_car.vel
 
-            x2 = run_car_info.max_accel * t1 ** 2 / 2 + run_car.vel * t1
+            x2 = run_car_info.max_accel * t1 ** 2 / 2 + veh.vel * t1
 
-            if not x2 > self.lm.acceleration_lane_start + 5 or run_car.calculate_dd() > run_car.distance:
+            if not x2 > self.lm.acceleration_lane_start + 5 or veh.calculate_dd() > veh.distance:
                 return False
 
         return True
@@ -298,7 +297,7 @@ class Road:
             for vehicle in lm.run_vehicle_ls:
                 vehicle_info = vehicle.info
 
-                self.calculate_accel(run_car=vehicle)
+                self.calculate_accel(veh=vehicle)
 
                 if vehicle.shift_lane is False:  # *　車線変更を開始していないとき
                     if vehicle_info.type == 0:  # * 手動運転車両の挙動
@@ -406,7 +405,7 @@ class Road:
 
                                 elif vehicle.front > lm.vel_sensor_point - 100:
                                     if vehicle_info.mode == 0:
-                                        vehicle.change_vd(lane=vehicle.lane, controller=Controller, extra_code=2)
+                                        vehicle.change_vd(lane=vehicle.lane, controller=self.controller, extra_code=2)
                                         vehicle_info.mode = 5
 
                             elif self.controller.distance_control:  # 車間距離制御
@@ -464,7 +463,7 @@ class Road:
             lm.generate_vehicle(dc=dc, time=time)
             lm.remove_car()
 
-    def save(self, interval, seed, dir_name) -> None:
+    def save(self, seed, dir_name) -> None:
         vehlog = self.vehlog
         lm = self.lm
         time_max = int(self.TIME_MAX / 10)
@@ -478,9 +477,9 @@ class Road:
         create_merging_info_sheet(wb=wb, vehlog=vehlog, dc=dc, lm=lm, time_max=time_max)
         create_visual_sheet(wb=wb, vehlog=vehlog, lm=lm, time_max=time_max)  # 可視化
         create_log_sheet(wb=wb, vehlog=vehlog, time_max=time_max)
-        create_avg_vel_log(wb=wb, vehlog=vehlog, lm=lm)
+        create_avg_vel_log(wb=wb, vehlog=vehlog)
         if not self.second_ct_ls == []:
-            create_avg_vel_log(wb=wb, vehlog=vehlog, lm=lm, id_ls=self.second_ct_ls, sheet_title="制御車両平均速度")
+            create_avg_vel_log(wb=wb, vehlog=vehlog, id_ls=self.second_ct_ls, sheet_title="制御車両平均速度")
 
         # create_avg_vel_log(wb=wb, vehlog=vehlog, lm=lm,
         #                    id_ls=[155, 209, 218, 221, 233, 256, 317, 342, 387, 452, 459, 472, 542, 571, 612, 645, 693],

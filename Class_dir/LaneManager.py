@@ -5,7 +5,7 @@ from typing import List
 
 from Class_dir.Controller import Controller
 from Class_dir.DataCollect import DataCollect
-from Class_dir.ParticularCar import Invisible_Vehicle
+from Class_dir.ParticularCar import InvisibleVehicle
 from Class_dir.VehicleClass import Vehicle
 
 
@@ -13,7 +13,7 @@ from Class_dir.VehicleClass import Vehicle
 
 
 class LaneManager:
-    def __init__(self, lane_num: int, merging_ratio, penetration, ego_ratio, seed) -> None:
+    def __init__(self, lane_num: int, controller: Controller, merging_ratio, penetration, ego_ratio, seed) -> None:
         self.lane_num = lane_num  # ? 車線数
         self.run_vehicle_ls: List[Vehicle] = []  # ? 現在走行している車両のCarクラスリスト
         self.q_lane_ls = []  # ? 各車線を走行する合計車両数のリスト
@@ -50,13 +50,8 @@ class LaneManager:
 
         # self.car_ls_changed_alpha = []
         # self.car_limit_changed_alpha = 3
-        self.controller: Controller | None = None
-        self.invisible_car = Invisible_Vehicle()  # ? 第1走行車線の先頭に置く
-
-        if penetration > 0:
-            self.use_base_station = 2  # 車線移動制御＆車間距離制御
-        elif penetration == 0:
-            self.use_base_station = 0  # 制御無し
+        self.controller: Controller = controller
+        self.invisible_car = InvisibleVehicle()  # ? 第1走行車線の先頭に置く
 
         self.random = Random()
         self.random.seed(seed)
@@ -100,7 +95,7 @@ class LaneManager:
     def return_rand_frequency(self, frequency) -> int:
         return int(frequency * round(self.random.uniform(-0.5, 0.5), 2))
 
-    def get_clvd(self, min_vel=3, max_vel=10):
+    def get_lcvd(self, min_vel=3, max_vel=10):
         return round(self.random.uniform(min_vel / 3.6, max_vel / 3.6), 2)
 
     def make_car_timetable(self) -> None:
@@ -140,12 +135,12 @@ class LaneManager:
     def set_veh_param(self, veh: Vehicle, front_car: Vehicle, time, lane) -> None:
         veh_info = veh.info
         if lane == 0:
-            if not self.use_base_station == 0:
+            if self.controller.merging_control:
                 veh_info.type = self.generate_random(self.merging_ratio)
-            elif self.use_base_station == 0:
+            else:
                 veh_info.type = 0
         else:
-            if self.use_base_station == 0:
+            if not self.controller.use_control:
                 veh_info.type = 0
             else:
                 veh_info.type = self.generate_random(self.penetration)
@@ -170,7 +165,7 @@ class LaneManager:
         veh_info.occur_time = time
         veh_info.shift_time = time + self.random.randint(1, 20)
         veh_info.min_vel = v_measure
-        veh_info.vdcl = self.get_clvd() if veh.ego == 0 else self.get_clvd(min_vel=10, max_vel=15)
+        veh_info.vdcl = self.get_lcvd() if veh.ego == 0 else self.get_lcvd(min_vel=10, max_vel=15)
         veh.front = 5
         veh.vel = v_measure
 
@@ -178,7 +173,7 @@ class LaneManager:
         for lane in range(self.lane_num):  # * 各車線ごとに処理をループ
             generate_time_lane = self.get_generate_time_lane(lane)
             if time == generate_time_lane[self.occur_num_ls[lane]] and self.next_generate_car_id < self.car_max:
-                next_gen_veh = Vehicle(ID=self.next_generate_car_id)
+                next_gen_veh = Vehicle(veh_id=self.next_generate_car_id)
                 next_gen_veh.lane = lane
                 lane_ls = self.get_lane(lane)
                 if not lane_ls:
@@ -226,7 +221,7 @@ class LaneManager:
                 elif lane == 3:
                     vd = self.make_vd(min_vel=111, max_vel=115)
         elif vehicle.type == 1:
-            if self.use_base_station == 1:
+            if self.controller.speed_control:
                 if extra_code == 0:
                     if lane == 0:
                         vd = round(80 / 3.6, 2)
@@ -247,7 +242,7 @@ class LaneManager:
                     if lane == 1:
                         vd = self.make_vd(min_vel=91, max_vel=100)
 
-            elif self.use_base_station == 2:
+            elif self.controller.distance_control:
                 if extra_code == 0:
                     if lane == 0:
                         vd = round(80 / 3.6, 2)
@@ -285,9 +280,9 @@ class LaneManager:
         """
 
     def set_car(self):
-        '''
+        """
         carクラスのfront_car,back_car,distance,delta_v,alphaを設定する関数
-        '''
+        """
         for lane in range(self.lane_num):
             lane_car_ls = self.get_lane(lane)
             for index_, check_car in enumerate(lane_car_ls):

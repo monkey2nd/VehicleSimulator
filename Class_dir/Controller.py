@@ -1,12 +1,13 @@
 class Controller:
     def __init__(self):
-        self.speed_control = False  # 速度制御
-        self.distance_control = True  # 車間距離制御
-        self.lc_control = True  # 車線変更制御
-        self.merging_control = True  # 合流制御
+        self.speed_control: bool = False  # 速度制御
+        self.distance_control: bool = True  # 車間距離制御
+        self.lc_control: bool = True  # 車線変更制御
+        self.merging_control: bool = True  # 合流制御
+        self.test = None
 
     @property
-    def use_control(self):
+    def use_control(self) -> bool:
         if True in self.__dict__.values():
             return True
         else:

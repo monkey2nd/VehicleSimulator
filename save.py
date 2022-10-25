@@ -21,10 +21,10 @@ def serch_car(car: List[List[Vehicle]], time, id) -> Vehicle:
 
 
 def write_list(ws: Worksheet, writtendata, column, row):
-    '''
+    """
     一次元又は二次元のリストをエクセルに直接書き込める関数
     返却値は次のrow(行）
-    '''
+    """
     for index, data in enumerate(writtendata):
         if type(data) in (List, list, np.ndarray):
             write_list(ws=ws, writtendata=data, column=column, row=row + index)
@@ -55,27 +55,19 @@ def create_excel_file():
 
 def create_info_sheet(wb: Workbook, lm: LaneManager, time_max):
     ws = wb.create_sheet("情報")
-    ws.cell(row=1, column=1).value = "シミュレーション時間"
-    ws.cell(row=1, column=2).value = (time_max / 10)
-
-    ws.cell(row=2, column=1).value = "加速交通量"
-    ws.cell(row=2, column=2).value = lm.get_q(0)
-
-    ws.cell(row=3, column=1).value = "第一走行交通量"
-    ws.cell(row=3, column=2).value = lm.get_q(1)
-
-    ws.cell(row=4, column=1).value = "第二走行交通量"
-    ws.cell(row=4, column=2).value = lm.get_q(2)
-
-    ws.cell(row=5, column=1).value = "追越交通量"
-    ws.cell(row=5, column=2).value = lm.get_q(3)
+    row = 1
+    row = write_list(ws=ws, writtendata=["シミュレーション時間", time_max / 10], row=row, column=1)
+    row = write_list(ws=ws, writtendata=["加速交通量", lm.get_q(0)], row=row, column=1)
+    row = write_list(ws=ws, writtendata=["第一走行交通量", lm.get_q(1)], row=row, column=1)
+    row = write_list(ws=ws, writtendata=["第二走行交通量", lm.get_q(2)], row=row, column=1)
+    row = write_list(ws=ws, writtendata=["追い越し交通量", lm.get_q(3)], row=row, column=1)
 
     ws.cell(row=6, column=1).value = "加速車線開始[m]"
     ws.cell(row=6, column=2).value = lm.acceleration_lane_start
     ws.cell(row=7, column=1).value = "加速車線終了[m]"
     ws.cell(row=7, column=2).value = lm.acceleration_lane_end
     ws.cell(row=8, column=1).value = "基地局"
-    ws.cell(row=8, column=2).value = lm.use_base_station
+    ws.cell(row=8, column=2).value = lm.controller.use_control
     ws.cell(row=9, column=1).value = "合流車両の割合"
     ws.cell(row=9, column=2).value = lm.merging_ratio
 
@@ -130,7 +122,6 @@ def save4_write0(ws: Worksheet, vehlog: Vehlog, time_max, lane, lane_id_list, ac
 
 
 def create_lane_vel_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max):
-    lane0_id_list, lane1_id_list, lane2_id_list, lane3_id_list = [], [], [], []
     lane0_id_list = check_veh_lane(vehlog, 0)  # 加速車線を走行した車両のIDを調べる
     lane1_id_list = check_veh_lane(vehlog, 1)  # 第一走行車線を走行した車両のIDを調べる
     lane2_id_list = check_veh_lane(vehlog, 2)  # 第二走行車線を走行した車両のIDを調べる
@@ -403,7 +394,7 @@ def time_avgvel_sheet(wb: Workbook, car: List[List[Vehicle]]):
     ws = wb.create_sheet(title='秒間平均速度')
     column_list = ['合流車線', '第一走行車線', '第二走行車線', '追越車線']
     row_list = ["0秒以降平均", '100秒以降平均', '200秒以降平均', '300秒以降平均', '400秒以降平均', '500秒以降平均']
-    lane_avgv = [[0, 0] for i in range(len(column_list))]  # ? [[合計車両数、合計車両速度],,,←車両レーン数]
+    lane_avgv = [[0, 0] for _ in range(len(column_list))]  # ? [[合計車両数、合計車両速度],,,←車両レーン数]
 
     row = 1
     for column, column_title in enumerate(column_list, 2):
@@ -431,9 +422,9 @@ def moving_avg_sheet(wb: Workbook, car: List[List[Vehicle]]):
     time_max = 600 * 10
     ws = wb.create_sheet('移動平均速度')
     column_titles = ['時間', '合流車線', '第一走行車線', '第二走行車線', '追越車線']
-    LANE_NUM = len(column_titles) - 1
-    WINDOW = 10  # ? 移動平均の幅
-    moving_avg = [[] for lane in range(LANE_NUM)]  # ? [[[合計車両数、合計車両速度]×Window]×レーン数]
+    lane_num = len(column_titles) - 1
+    window = 10  # ? 移動平均の幅
+    moving_avg = [[] for _ in range(lane_num)]  # ? [[[合計車両数、合計車両速度]×Window]×レーン数]
 
     for column, column_title in enumerate(column_titles, 1):
         ws.cell(row=1, column=column).value = column_title
@@ -441,7 +432,7 @@ def moving_avg_sheet(wb: Workbook, car: List[List[Vehicle]]):
     ws.freeze_panes = 'A2'
 
     for time in range(time_max + 1):  # ? 1秒毎でループ
-        lane_avgv = [[0, 0] for i in range(LANE_NUM)]  # ? [[合計車両数、合計車両速度],,,←レーン数]
+        lane_avgv = [[0, 0] for _ in range(lane_num)]  # ? [[合計車両数、合計車両速度],,,←レーン数]
         for check_car in car[time]:
             if check_car.lane == -1:
                 continue
@@ -449,17 +440,17 @@ def moving_avg_sheet(wb: Workbook, car: List[List[Vehicle]]):
                 lane_avgv[check_car.lane][0] += 1
                 lane_avgv[check_car.lane][1] += check_car.vel_h
 
-        for lane in range(LANE_NUM):
+        for lane in range(lane_num):
             moving_avg[lane].append(lane_avgv[lane])
-            if len(moving_avg[lane]) > WINDOW:
+            if len(moving_avg[lane]) > window:
                 moving_avg[lane].pop(0)
 
-        if len(moving_avg[0]) >= WINDOW:
+        if len(moving_avg[0]) >= window:
             ws.cell(row=time + 1, column=1).value = time
-            for lane in range(LANE_NUM):
+            for lane in range(lane_num):
                 car_num = 0
                 car_vel = 0
-                for i in range(WINDOW):
+                for i in range(window):
                     car_num += moving_avg[lane][i][0]
                     car_vel += moving_avg[lane][i][1]
                 ws.cell(row=time + 1 - 1,
@@ -486,7 +477,7 @@ def deceleration_log_sheet(wb: Workbook, dc: DataCollect, lm: LaneManager):
     category = ['Id', '初期速度', '最小速度', '減速量1', '減速量2']
     max_range = 4
     bandwidth = 10
-    band_count = [0 for i in range(max_range + 1)]
+    band_count = [0 for _ in range(max_range + 1)]
 
     for column, value in enumerate(category, 1):
         ws.cell(row=1, column=column).value = value
@@ -579,7 +570,7 @@ def tracking_log(wb: Workbook, vehlog: Vehlog, id_list: List[int], time_max: int
     pass
 
 
-def create_avg_vel_log(wb: Workbook, vehlog: Vehlog, lm: LaneManager, id_ls=None, sheet_title="平均速度分布"):
+def create_avg_vel_log(wb: Workbook, vehlog: Vehlog, id_ls=None, sheet_title="平均速度分布"):
     ws = wb.create_sheet(sheet_title)
     column_title = ["id", "平均速度"]
     vel_dict: Dict[int, np.ndarray] = {}

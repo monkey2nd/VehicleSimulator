@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import random
 from typing import Any, Dict, List
 
@@ -5,9 +7,8 @@ from Class_dir.Controller import Controller
 
 
 class Vehicle:
-    # noinspection PyTypeChecker
-    def __init__(self, ID) -> None:
-        self.id: int = ID  # 0ID代入
+    def __init__(self, veh_id) -> None:
+        self.id: int = veh_id  # 0ID代入
         self.front = 0  # 1前方位置代入
         self.lane: int = -1  # 2車線代入
         self.vel: float = 0  # 3速度代入
@@ -17,17 +18,17 @@ class Vehicle:
         self.desired_distance = 0
         self.delta_v = 0  # 6相対速度
         self.tau = 1.0
-        self.front_car: Vehicle = None  # 7 前方車両
-        self.back_car: Vehicle = None  # 8 後方車両
-        self.target_car: Vehicle = None  # 9 目標車両
-        self.app_car: Vehicle = None  # 10 基地局を用いたときに通信を行う合流車両Carクラス
-        self.apped_car: Vehicle = None  # 11 基地局を用いたときに通信を行う譲る車両Carクラス
+        self.front_car: Vehicle | None = None  # 7 前方車両
+        self.back_car: Vehicle | None = None  # 8 後方車両
+        self.target_car: Vehicle | None = None  # 9 目標車両
+        self.app_car: Vehicle | None = None  # 10 基地局を用いたときに通信を行う合流車両Carクラス
+        self.apped_car: Vehicle | None = None  # 11 基地局を用いたときに通信を行う譲る車両Carクラス
         self.shift_lane: bool = False  # 10 車線変更してる途中かどうか
         self.shift_lane_to = 0  # 11 どこの車線に変更しようとしてるか
         self.shift_begin_time = 0  # 12 車線変更開始時間
         self.shift_distance_go: float = 0  # 13 車線変更先車間距離
         self._control_mode = 0  # * 自動運転車両のみ使用する制御モード変数
-        self.info: "VehicleInfo" = VehicleInfo(Id=ID)
+        self.info: "VehicleInfo" = VehicleInfo(veh_id=veh_id)
 
     @property
     def back(self):
@@ -184,14 +185,14 @@ class Vehicle:
         run_car_info = self.info
         s0 = run_car_info.dis_stop
         v = self.vel
-        T = self.tau
-        Treac = run_car_info.driver_reaction_time
+        t = self.tau
+        treac = run_car_info.driver_reaction_time
         delta_v = self.delta_v if target_car is None else self.vel - target_car.vel
         a = run_car_info.max_accel
         b = run_car_info.desired_Deceleration
-        # ? s0:停止時最小車間距離　v:車両速度　T:安全車頭時間　Treac:反応時間　delta_v:相対速度　a,最大加速度　b,希望減速度
+        # ? s0:停止時最小車間距離　v:車両速度　t:安全車頭時間　treac:反応時間　delta_v:相対速度　a,最大加速度　b,希望減速度
 
-        return round(s0 + v * (T + Treac) + ((v * delta_v) / (((a * b) ** 0.5) * 2)), 1)
+        return round(s0 + v * (t + treac) + ((v * delta_v) / (((a * b) ** 0.5) * 2)), 1)
 
     def calculate_accel(self, desired_vehicle_distance=None, target_car: 'Vehicle' = None) -> float:
         """
@@ -215,7 +216,7 @@ class Vehicle:
             ss = 0
 
         """if use_base_station == 2 and self.info.type == 1 and self.lane == 1 and acceleration_lane_start - 100 < self.front < acceleration_lane_start + 300:
-            car_accl = min(0, car_accl)"""
+            car_accel = min(0, car_accel)"""
 
         accel = round(a * min(1 - (v / vd) ** 4, 1 - (ss / s) ** 2), 2)
         if accel < -self.info.max_deceleration:
@@ -258,8 +259,8 @@ class Vehicle:
 
 
 class VehicleInfo:
-    def __init__(self, Id) -> None:
-        self.id: int = Id  # 0:Id
+    def __init__(self, veh_id) -> None:
+        self.id: int = veh_id  # 0:Id
         self.max_accel = 0  # 1:最大加速度
         self.max_deceleration = 1.5  # ? 最大限速度
         self.desired_Deceleration = 0  # 2:希望減速度
@@ -331,13 +332,13 @@ class BaseStation:
         return str(self.__dict__)
 
 
-def make_car_info(CAR_MAX) -> List[VehicleInfo]:
-    return [VehicleInfo(id) for id in range(CAR_MAX)]
+def make_car_info(veh_max) -> List[VehicleInfo]:
+    return [VehicleInfo(id) for id in range(veh_max)]
 
 
-def make_car(time_max, CAR_MAX) -> List[List[Vehicle]]:
-    return [[Vehicle(id_) for id_ in range(CAR_MAX)] for time in range(time_max)]
+def make_car(time_max, veh_max) -> List[List[Vehicle]]:
+    return [[Vehicle(id_) for id_ in range(veh_max)] for _ in range(time_max)]
 
 
-def make_base_station(CAR_MAX) -> List[BaseStation]:
-    return [BaseStation() for i in range(CAR_MAX)]
+def make_base_station(veh_max) -> List[BaseStation]:
+    return [BaseStation() for _ in range(veh_max)]

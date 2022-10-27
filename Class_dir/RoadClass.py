@@ -57,6 +57,8 @@ class Road:
         follower: Vehicle | None = None  # ? 目的車線追従車両
         follower_dis = float("infinity")  # ? ↑との車間距離
 
+        lc_time = 2.0  # lane changeing time (車線変更時間)
+
         for dst_lane_car in self.lm.get_lane(dst_lane):  # ? 車線変更先(dst_lane)のレーンリスト
             distance_front = dst_lane_car.back - vehicle.front
             distance_back = vehicle.back - dst_lane_car.front
@@ -80,8 +82,9 @@ class Road:
                 return False
 
         if follower is not None:
-            min_back_distance = (follower.vel - vehicle.vel) ** 2 / follower.info.desired_deceleration / 2 + \
-                                follower.info.dis_stop
+            vel_after_lc = vehicle.vel + vehicle.accel * lc_time
+            min_back_distance = (follower.vel - vel_after_lc) ** 2 / follower.info.desired_deceleration / 2 \
+                                - (vehicle.vel - vel_after_lc) * lc_time / 2 + follower.info.dis_stop
             if min_back_distance > follower_dis:
                 return False
 

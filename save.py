@@ -291,27 +291,30 @@ def abc_from_number(number):  # 可視化するのに使う関数
 
 
 def create_visual_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max):
-    def draw_vehicle(ws: Worksheet, vehicle: Vehtpl, row, column):
-        veh_side = Side(style="thin", color="000000")
-        veh_border_bottom = Border(bottom=veh_side, right=veh_side, left=veh_side)
-        veh_border_top = Border(top=veh_side, right=veh_side, left=veh_side)
-        veh_border_middle = Border(right=veh_side, left=veh_side)
+    def draw_vehicle(ws: Worksheet, vehicle: Vehtpl, setting_dic: dict[str, Border], row, column):
         _color = colorBarRGB2(vehicle.type, vehicle.shift_lane)
         ws.cell(row=row, column=column).font = Font(b=True, color=_color)
         ws.cell(row=row, column=column).value = str(vehicle.veh_id) + str("/") + str(int(vehicle.vel_h))  # IDを記録1
         for i in range(5):  # 車両長分ループ
             if i == 0:
-                ws.cell(row=row - i, column=column).border = veh_border_bottom
+                ws.cell(row=row - i, column=column).border = setting_dic["bottom_border"]
             elif i == 4:
-                ws.cell(row=row - i, column=column).border = veh_border_top
+                ws.cell(row=row - i, column=column).border = setting_dic["top_border"]
             else:
-                ws.cell(row=row - i, column=column).border = veh_border_middle
+                ws.cell(row=row - i, column=column).border = setting_dic["middle_border"]
 
     lane_num = 4  # *　レーン数
     border = Border(right=Side(style='thin', color='000000'))
     ws = wb.create_sheet(title="可視化")
     lane_id_list = [0] * 2000
     fill = PatternFill(patternType='solid', fgColor='FF0000')
+
+    veh_side = Side(style="thin", color="000000")
+    setting_dict = {"top_border": Border(top=veh_side, right=veh_side, left=veh_side),
+                    "bottom_border": Border(bottom=veh_side, right=veh_side, left=veh_side),
+                    "middle_border": Border(right=veh_side, left=veh_side)
+                    }
+
     for time in tqdm(range(time_max), desc='visualize'):
         vehicle_timelog = vehlog.get(time)
         if not vehicle_timelog == {}:
@@ -319,6 +322,7 @@ def create_visual_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max)
             for check_vehicle in vehicle_timelog.values():
                 lane = check_vehicle.lane
                 draw_vehicle(ws=ws, vehicle=check_vehicle, row=check_vehicle.front,
+                             setting_dic=setting_dict,
                              column=check_vehicle.lane + 1 + lane_num * time)
 
                 # 車線が変わった時だけセル色を変える

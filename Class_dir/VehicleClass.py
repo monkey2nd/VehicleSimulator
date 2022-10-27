@@ -244,7 +244,7 @@ class Vehicle:
         self.front = round(self.front + self.vel / 10, 2)
         self.accel = round(self.accel, 2)
 
-        if self.shift_lane is True and time == self.shift_begin_time + 40:
+        if self.shift_lane is True and time == self.shift_begin_time + 20:
             self.lane = self.shift_lane_to
             self.shift_lane_to = self.shift_begin_time = self.shift_distance_go = 0
             self.shift_lane = False

@@ -190,7 +190,7 @@ class LaneManager:
                 self.run_vehicle_ls.append(next_gen_veh)  # ? sort必要かも
                 self.next_id_increment()  # ? next_idを+1
                 self.occur_increment(lane)
-                dc.dece_ls[next_gen_veh.id].set_v_init(v_init=next_gen_veh.info.v_init)
+                dc.dece_ls[next_gen_veh.veh_id].set_v_init(v_init=next_gen_veh.info.v_init)
 
     def make_vd(self, min_vel: int, max_vel: int) -> float:
         # この関数を変更する必要あり！

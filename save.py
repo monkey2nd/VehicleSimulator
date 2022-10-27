@@ -13,11 +13,11 @@ from tqdm import tqdm
 from Class_dir.DataCollect import DataCollect
 from Class_dir.LaneManager import LaneManager
 from Class_dir.VehicleClass import Vehicle
-from Class_dir.VehlogClass import Vehlog
+from Class_dir.VehlogClass import Vehlog, Vehtpl
 
 
-def serch_car(car: List[List[Vehicle]], time, id) -> Vehicle:
-    return next((check_car for check_car in car[time] if check_car.id == id), None)
+def search_veh(car: List[List[Vehicle]], time, veh_id) -> Vehicle:
+    return next((check_car for check_car in car[time] if check_car.veh_id == veh_id), None)
 
 
 def write_list(ws: Worksheet, writtendata, column, row):
@@ -78,8 +78,8 @@ def check_veh_lane(vehlog: Vehlog, lane):
     for veh_time in vehlog.log:
         for vehicle in veh_time.values():
             if vehicle.lane == lane:
-                if vehicle.id not in id_list:
-                    id_list.append(vehicle.id)
+                if vehicle.veh_id not in id_list:
+                    id_list.append(vehicle.veh_id)
 
     return id_list
 
@@ -164,10 +164,10 @@ def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm:
     # ##合流できた車両の合流までにかかった時間を調べる###
     check_car_old = None
     check_car = None
-    for id in range(1, lm.car_max):  # 車両IDが0の車は除く
+    for veh_id in range(1, lm.car_max):  # 車両IDが0の車は除く
         for time in range(time_max):
             check_car_old = check_car
-            check_car = vehlog.get(time, id)
+            check_car = vehlog.get(time, veh_id)
             if check_car is not None:
                 if lm.acceleration_lane_start < check_car.back:
                     if check_car.lane == 0:
@@ -178,7 +178,7 @@ def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm:
         # 加速車線を走っていた時間が0秒より長く、最後の時間の車線が加速車線でないとき、合流できた車両とみなす
 
         if time_tmp > 0 and check_car is not None and check_car.lane != 0:
-            ws.cell(row=row_tmp, column=1).value = id  # 合流できた車両ID
+            ws.cell(row=row_tmp, column=1).value = veh_id  # 合流できた車両ID
             ws.cell(row=row_tmp, column=2).value = time
 
             ws.cell(row=row_tmp, column=3).value = time_tmp  # 合流できるまでにかかった時間
@@ -186,10 +186,10 @@ def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm:
             if lm.acceleration_lane_end - 50 < check_car.front:  # 950m以降の車線変更ではセル色を変える
                 ws.cell(row=row_tmp, column=4).fill = fill
             ws.cell(row=row_tmp, column=5).value = check_car_old.app_car_id  # 譲った車両
-            ws.cell(row=row_tmp, column=6).value = dc.get_cd(id=check_car.id).cep  # 検索前方位置
-            ws.cell(row=row_tmp, column=7).value = dc.get_cd(id=check_car.id).csp  # 検索後方位置
+            ws.cell(row=row_tmp, column=6).value = dc.get_cd(id=check_car.veh_id).cep  # 検索前方位置
+            ws.cell(row=row_tmp, column=7).value = dc.get_cd(id=check_car.veh_id).csp  # 検索後方位置
             for k in range(0, 5):
-                ws.cell(row=row_tmp, column=(8 + k)).value = vehlog.get(time - (k * 10), id).vel_h  # 4秒前までの合流時車両速度
+                ws.cell(row=row_tmp, column=(8 + k)).value = vehlog.get(time - (k * 10), veh_id).vel_h  # 4秒前までの合流時車両速度
                 if check_car.vel < 20 / 3.6 and k == 0:  # ! 20km/s以下の車線変更ではセル色を変える changed by koki
                     ws.cell(row=row_tmp, column=8).fill = fill
             ws.cell(row=row_tmp, column=13).value = check_car.vd_h  # 希望速度
@@ -267,13 +267,16 @@ def colorBarRGB(car_id):  # 可視化するのに使う関数
     return color
 
 
-def colorBarRGB2(type_):  # 可視化するのに使う関数
+def colorBarRGB2(type_, shift_lane: bool):  # 可視化するのに使う関数
     if type_ == 0:
-        color = "808080"
+        _color = "808080"
     elif type_ == 1:
-        color = "00FFFF"
+        _color = "00FFFF"
 
-    return color
+    if shift_lane:
+        _color = "FFA500"
+
+    return _color
 
 
 def abc_from_number(number):  # 可視化するのに使う関数
@@ -288,6 +291,22 @@ def abc_from_number(number):  # 可視化するのに使う関数
 
 
 def create_visual_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max):
+    def draw_vehicle(ws: Worksheet, vehicle: Vehtpl, row, column):
+        veh_side = Side(style="thin", color="000000")
+        veh_border_bottom = Border(bottom=veh_side, right=veh_side, left=veh_side)
+        veh_border_top = Border(top=veh_side, right=veh_side, left=veh_side)
+        veh_border_middle = Border(right=veh_side, left=veh_side)
+        _color = colorBarRGB2(vehicle.type, vehicle.shift_lane)
+        ws.cell(row=row, column=column).font = Font(b=True, color=_color)
+        ws.cell(row=row, column=column).value = str(vehicle.veh_id) + str("/") + str(int(vehicle.vel_h))  # IDを記録1
+        for i in range(5):  # 車両長分ループ
+            if i == 0:
+                ws.cell(row=row - i, column=column).border = veh_border_bottom
+            elif i == 4:
+                ws.cell(row=row - i, column=column).border = veh_border_top
+            else:
+                ws.cell(row=row - i, column=column).border = veh_border_middle
+
     lane_num = 4  # *　レーン数
     border = Border(right=Side(style='thin', color='000000'))
     ws = wb.create_sheet(title="可視化")
@@ -298,31 +317,18 @@ def create_visual_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max)
         if not vehicle_timelog == {}:
             ws.cell(row=1, column=1 + lane_num * time).value = time  # IDを記録1
             for check_vehicle in vehicle_timelog.values():
-                if 3000 > check_vehicle.front > 0:  # ** lane>0 →　lane >= 0
-                    lane = check_vehicle.lane
-                    # color_tmp = colorBarRGB(check_vehicle.Id)
-                    color_tmp = colorBarRGB2(check_vehicle.type)
+                lane = check_vehicle.lane
+                draw_vehicle(ws=ws, vehicle=check_vehicle, row=check_vehicle.front,
+                             column=check_vehicle.lane + 1 + lane_num * time)
+
+                # 車線が変わった時だけセル色を変える
+                if lane != lane_id_list[check_vehicle.veh_id] and lane_id_list[check_vehicle.veh_id] != 0:
                     ws.cell(row=check_vehicle.front,
-                            column=check_vehicle.lane + 1 + lane_num * time).font = Font(b=True,
-                                                                                         color=color_tmp)
-                    if check_vehicle.lane == 3:
-                        ws.cell(row=check_vehicle.front,
-                                column=check_vehicle.lane + 1 + lane_num * time).value = (
-                                str(check_vehicle.id) + str("/") + str(int(check_vehicle.vel_h)))  # IDを記録1
-                        ws.cell(row=check_vehicle.front,
-                                column=check_vehicle.lane + 1 + lane_num * time).border = border
-                    else:
-                        ws.cell(row=check_vehicle.front,
-                                column=check_vehicle.lane + 1 + lane_num * time).value = (
-                                str(check_vehicle.id) + str("/") + str(int(check_vehicle.vel_h)))  # IDを記録1
-                    # 車線が変わった時だけセル色を変える
-                    if lane != lane_id_list[check_vehicle.id] and lane_id_list[check_vehicle.id] != 0:
-                        ws.cell(row=check_vehicle.front,
-                                column=check_vehicle.lane + 1 + lane_num * time).fill = fill
-                    if check_vehicle.shift_begin_time + 30 < time and lane == 1 and check_vehicle.shift_lane is True:
-                        ws.cell(row=check_vehicle.front,
-                                column=check_vehicle.lane + 1 + lane_num * time).fill = fill
-                    lane_id_list[check_vehicle.id] = lane
+                            column=check_vehicle.lane + 1 + lane_num * time).fill = fill
+                if check_vehicle.shift_begin_time + 30 < time and lane == 1 and check_vehicle.shift_lane is True:
+                    ws.cell(row=check_vehicle.front,
+                            column=check_vehicle.lane + 1 + lane_num * time).fill = fill
+                lane_id_list[check_vehicle.veh_id] = lane
         for car_id in range(1, lm.road_length):  # 罫線引くところ 20200615
             ws.cell(row=car_id, column=lane_num + lane_num * time).border = border
 
@@ -348,7 +354,7 @@ def create_log_sheet(wb: Workbook, vehlog: Vehlog, time_max):
     for time in range(0, time_max):
         for vehicle in vehlog.get_logvalues(time):  # ID0は除外,車の台数分ループ
             ws.cell(row=row, column=1).value = (time / 10)  # 最も左の列の時間の部分
-            data_ls = [time, vehicle.id, vehicle.front, vehicle.lane, vehicle.type, vehicle.accel,
+            data_ls = [time, vehicle.veh_id, vehicle.front, vehicle.lane, vehicle.type, vehicle.accel,
                        vehicle.vel_h, vehicle.vd_h, vehicle.vdcl_h, vehicle.distance,
                        vehicle.desired_distance, vehicle.delta_v, vehicle.tau,
                        vehicle.front_car_id, vehicle.back_car_id, vehicle.target_car_id, vehicle.shift_front_veh_id,
@@ -563,7 +569,7 @@ def tracking_log(wb: Workbook, vehlog: Vehlog, id_list: List[int], time_max: int
         for veh_id in id_list:
             veh_data = vehlog.get(time, veh_id)
             if veh_data is not None:
-                row = write_list(ws=ws, writtendata=[time, veh_data.id, veh_data.front, veh_data.vel_h], column=1,
+                row = write_list(ws=ws, writtendata=[time, veh_data.veh_id, veh_data.front, veh_data.vel_h], column=1,
                                  row=row)
 
     pass
@@ -577,11 +583,11 @@ def create_avg_vel_log(wb: Workbook, vehlog: Vehlog, id_ls=None, sheet_title="�
     row = write_list(ws=ws, writtendata=column_title, row=row, column=1)
     for time_log in vehlog.log:
         for vehicle in time_log.values():
-            if id_ls is None or vehicle.id in id_ls:
-                if vehicle.id not in vel_dict.keys():
-                    vel_dict[vehicle.id] = np.array([vehicle.vel_h])
+            if id_ls is None or vehicle.veh_id in id_ls:
+                if vehicle.veh_id not in vel_dict.keys():
+                    vel_dict[vehicle.veh_id] = np.array([vehicle.vel_h])
                 else:
-                    vel_dict[vehicle.id] = np.append(vel_dict[vehicle.id], vehicle.vel_h)
+                    vel_dict[vehicle.veh_id] = np.append(vel_dict[vehicle.veh_id], vehicle.vel_h)
 
     for veh_id in vel_dict.keys():
         row = write_list(ws=ws, writtendata=[veh_id, vel_dict[veh_id].mean()], row=row, column=1)

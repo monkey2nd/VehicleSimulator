@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # car_max_ls = range(500, 601, 50)
     # car_max_ls = [750]
     # todo veh_max_lsにて車両数を増やし事故が発生するパターンを確認するまた手動運転車両の挙動についても確認
-    veh_max_ls = [750]
+    veh_max_ls = [700]
 
     penetration_ls = [0.3]
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     # seed_ls = range(10)
     seed_ls = [11]
 
-    q_lane0_ls = [50]
+    q_lane0_ls = [70]
 
     ego_ls = [0]
 

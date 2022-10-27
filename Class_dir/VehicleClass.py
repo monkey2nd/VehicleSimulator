@@ -8,7 +8,7 @@ from Class_dir.Controller import Controller
 
 class Vehicle:
     def __init__(self, veh_id) -> None:
-        self.id: int = veh_id  # 0ID代入
+        self.veh_id: int = veh_id  # 0ID代入
         self.front = 0  # 1前方位置代入
         self.lane: int = -1  # 2車線代入
         self.vel: float = 0  # 3速度代入
@@ -267,7 +267,7 @@ class Vehicle:
 
 class VehicleInfo:
     def __init__(self, veh_id) -> None:
-        self.id: int = veh_id  # 0:Id
+        self.veh_id: int = veh_id  # 0:Id
         self.max_accel = 0  # 1:最大加速度
         self.max_deceleration = 1.5  # ? 最大限速度
         self.desired_deceleration = 0  # 2:希望減速度
@@ -340,11 +340,11 @@ class BaseStation:
 
 
 def make_car_info(veh_max) -> List[VehicleInfo]:
-    return [VehicleInfo(id) for id in range(veh_max)]
+    return [VehicleInfo(veh_id) for veh_id in range(veh_max)]
 
 
 def make_car(time_max, veh_max) -> List[List[Vehicle]]:
-    return [[Vehicle(id_) for id_ in range(veh_max)] for _ in range(time_max)]
+    return [[Vehicle(veh_id) for veh_id in range(veh_max)] for _ in range(time_max)]
 
 
 def make_base_station(veh_max) -> List[BaseStation]:

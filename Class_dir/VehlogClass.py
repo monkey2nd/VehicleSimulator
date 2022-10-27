@@ -6,7 +6,7 @@ from Class_dir.VehicleClass import Vehicle
 
 
 class Vehtpl(NamedTuple):
-    id: int
+    veh_id: int
     front: float
     lane: int
     vel: float
@@ -53,16 +53,16 @@ class Vehtpl(NamedTuple):
 
 
 def make_vehtpl(veh_cls: Vehicle):
-    return Vehtpl(veh_cls.id, veh_cls.front, veh_cls.lane, veh_cls.vel, veh_cls.vd, veh_cls.accel,
+    return Vehtpl(veh_cls.veh_id, veh_cls.front, veh_cls.lane, veh_cls.vel, veh_cls.vd, veh_cls.accel,
                   veh_cls.info.vdcl,
                   veh_cls.distance,
                   veh_cls.desired_distance, veh_cls.delta_v_h, veh_cls.tau,
-                  veh_cls.front_veh.id if veh_cls.front_veh is not None else None,
-                  veh_cls.back_veh.id if veh_cls.back_veh is not None else None,
-                  veh_cls.target_veh.id if veh_cls.target_veh is not None else None,
-                  veh_cls.app_veh.id if veh_cls.app_veh is not None else None,
-                  veh_cls.apped_veh.id if veh_cls.apped_veh is not None else None,
-                  veh_cls.shift_front_veh.id if veh_cls.shift_front_veh is not None else None,
+                  veh_cls.front_veh.veh_id if veh_cls.front_veh is not None else None,
+                  veh_cls.back_veh.veh_id if veh_cls.back_veh is not None else None,
+                  veh_cls.target_veh.veh_id if veh_cls.target_veh is not None else None,
+                  veh_cls.app_veh.veh_id if veh_cls.app_veh is not None else None,
+                  veh_cls.apped_veh.veh_id if veh_cls.apped_veh is not None else None,
+                  veh_cls.shift_front_veh.veh_id if veh_cls.shift_front_veh is not None else None,
                   veh_cls.shift_lane, veh_cls.shift_lane_to, veh_cls.shift_begin_time, veh_cls.shift_distance_go,
                   veh_cls.info.mode, veh_cls.type, veh_cls.ego)
 
@@ -77,17 +77,17 @@ class Vehlog:
     def append(self, veh_ls: List[Vehicle]):
         log_dic: Dict[int, Vehtpl] = {}
         for vehicle in veh_ls:
-            log_dic[vehicle.id] = make_vehtpl(veh_cls=vehicle)
+            log_dic[vehicle.veh_id] = make_vehtpl(veh_cls=vehicle)
         self.set(tupdic=log_dic)
 
     def get_id_ls(self, time: int) -> List[int]:
         return list(self.log[time].keys())
 
-    def get(self, time=None, id=None):
+    def get(self, time=None, veh_id=None) -> Vehtpl | dict[int, Vehtpl] | None:
         if time is not None:
-            if id is not None:
-                if 0 <= time <= len(self.log) - 1 and id in self.log[time].keys():
-                    return self.log[time][id]
+            if veh_id is not None:
+                if 0 <= time <= len(self.log) - 1 and veh_id in self.log[time].keys():
+                    return self.log[time][veh_id]
                 else:
                     return None
             else:

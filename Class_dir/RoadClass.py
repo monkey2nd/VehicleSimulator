@@ -112,7 +112,7 @@ class Road:
                 break
         return leader, follower
 
-    def manual_shift_to_R(self, vehicle: Vehicle):
+    def manual_shift_to_right(self, vehicle: Vehicle):
         run_car_info = vehicle.info
         if vehicle.vel_h < vehicle.vd_h - vehicle.info.vdcl_h:  # (希望速度-vdcl_h) km/h より遅いか
             if vehicle.accel <= 0 and vehicle.front_veh is not None:
@@ -330,18 +330,18 @@ class Road:
                                     if not app_ls == []:
                                         app_car = min(app_ls, key=lambda veh: veh[1])[0]
                                         app_car.apped_veh = vehicle
-                                        dc.set_cd(id=vehicle.id, csp=csp, cep=cep)
+                                        dc.set_cd(id=vehicle.veh_id, csp=csp, cep=cep)
 
                         elif vehicle.lane == 1:
                             if not vehicle_info.shift_time == -1 and vehicle_info.shift_time == time and vehicle_info.ego == 0:
-                                if self.manual_shift_to_R(vehicle=vehicle):
+                                if self.manual_shift_to_right(vehicle=vehicle):
                                     vehicle_info.shift_time = -1
                                 else:
                                     vehicle_info.update_shift_time()
 
                         elif vehicle.lane == 2:
                             if not vehicle_info.shift_time == -1 and vehicle_info.shift_time == time and vehicle_info.ego == 0:
-                                if self.manual_shift_to_R(vehicle=vehicle):
+                                if self.manual_shift_to_right(vehicle=vehicle):
                                     vehicle_info.shift_time = -1
                                 else:
                                     vehicle_info.update_shift_time()
@@ -382,7 +382,7 @@ class Road:
                                         app_car = min(app_ls, key=lambda veh: veh[1])[0]
                                         vehicle.app_veh = app_car
                                         app_car.apped_veh = vehicle
-                                        dc.set_cd(id=vehicle.id, csp=csp, cep=cep)
+                                        dc.set_cd(id=vehicle.veh_id, csp=csp, cep=cep)
 
                         elif vehicle.lane == 1:
                             if self.controller.speed_control:  # 車速制御
@@ -429,7 +429,6 @@ class Road:
                                         vehicle.change_tau(1.0)
                                         vehicle.set_vd(vehicle.vd + 20 / 3.6)
 
-
                         elif vehicle.lane == 2:
                             if self.controller.lc_control:  # 車線変更制御
                                 if lm.second_control_point < vehicle.front and vehicle_info.second_flag == 0:
@@ -447,7 +446,7 @@ class Road:
                         elif vehicle.lane == 3:
                             pass
 
-                dc.set_min_vel(id=vehicle.id, vel=vehicle.vel)
+                dc.set_min_vel(id=vehicle.veh_id, vel=vehicle.vel)
 
                 vehicle.update_car(time=time)
                 if vehicle.shift_lane:
@@ -462,7 +461,7 @@ class Road:
                     check_car.change_vd(lane=1, controller=self.controller)
                     check_car.info.mode = 2
                     lm.second_control_car_ls.append(check_car)
-                    self.second_ct_ls.append(check_car.id)
+                    self.second_ct_ls.append(check_car.veh_id)
 
             if time % self.interval == 0:
                 self.vehlog.append(lm.run_vehicle_ls)

@@ -343,8 +343,19 @@ def create_visual_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max)
     return ws
 
 
+def abc_from_number(number) -> str:
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    colname = ""
+    divend = number
+    while divend > 0:
+        modulo = (divend - 1) % 26
+        colname = alphabet[modulo] + colname
+        divend = (divend - modulo) // 26
+    return colname
+
+
 def create_log_sheet(wb: Workbook, vehlog: Vehlog, time_max):
-    ws = wb.create_sheet(title="log_sheet")
+    ws: Worksheet = wb.create_sheet(title="log_sheet")
     row = 1
 
     list_ = ["時間", "Id", "前方位置", "車線", "車両タイプ", "加速度", "速度", "希望速度", "車線変更閾値", "車間",
@@ -358,6 +369,8 @@ def create_log_sheet(wb: Workbook, vehlog: Vehlog, time_max):
     for time in range(0, time_max):
         for vehicle in vehlog.get_logvalues(time):  # ID0は除外,車の台数分ループ
             ws.cell(row=row, column=1).value = (time / 10)  # 最も左の列の時間の部分
+            # col = abc_from_number(vehicle.lane + 1 + 4 * time)
+            # ws.cell(row=row, column=2).hyperlink = "#可視化!" + str(col) + str(int(vehicle.front))
             data_ls = [time, vehicle.veh_id, vehicle.front, vehicle.lane, vehicle.type, vehicle.accel,
                        vehicle.vel_h, vehicle.vd_h, vehicle.vdcl_h, vehicle.distance,
                        vehicle.desired_distance, vehicle.delta_v, vehicle.tau,

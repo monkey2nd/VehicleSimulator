@@ -27,4 +27,4 @@ def simulation(
 
     road.simulation()
 
-    road.save(seed=seed, dir_name=dir_name)
+    road.save(controller=road.controller, seed=seed, dir_name=dir_name)

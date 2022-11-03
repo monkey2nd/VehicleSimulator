@@ -86,7 +86,6 @@ class Vehicle:
 
     def change_tau(self, tau):
         self.tau = tau
-        self.info.tau_changed_flag = True
 
     def init_tau(self):
         self.tau = 1.0
@@ -248,9 +247,8 @@ class Vehicle:
             self.lane = self.shift_lane_to
             self.shift_lane_to = self.shift_begin_time = self.shift_distance_go = 0
             self.shift_lane = False
-            run_car_info.mode = 0
+            run_car_info.merging_flag = False
             if self.app_veh is not None:
-                self.info.mode = 0
                 self.app_veh.info.mode = 0
                 self.app_veh.apped_veh = None
                 self.app_veh = None
@@ -277,13 +275,14 @@ class VehicleInfo:
         self.type = -1  # ? 8 0:手動運転 1:自動運転
         self.ego = 0  # ? 車線変更時譲らない車両 0:譲る　1:譲らない
         self.occur_time = 0  # 9車両発生時刻
-        self.mode = 0  # ? 現在の状態を表す変数(0:通常走行中,1:合流中,2:車線変更中,3加速制御,4:減速制御,5:減速軽減)
+        self.mode = 0  # ? 現在の状態を表す変数(0:通常走行中,2:車線変更中,3加速制御,4:減速制御,5:減速軽減)
         self.shift_time = 0  # ? 15 手動運転車両が車線変更する時間
         self.min_vel = 0
         self.vdcl = 0  # ? vel diff to change lanes 車線変更を行う希望速度と走行速度の速度差
         self.vel_sensor_flag = 0  # ? 自動合流を行う際vel_sensor_pointを通過したかどうか
         self.second_flag = 0  # ? 第二制御（第二走行車線から第一走行車線に車線変更を行う制御）を行ったかどうか
         self.tau_changed_flag = False  # tauが初期状態から変更されているかを確認するフラグ
+        self.merging_flag = False  # 合流時希望速度変更を行ったかを確認するフラグ
 
     @property
     def list(self) -> List:

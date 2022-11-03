@@ -1,4 +1,4 @@
-import os
+import pathlib
 from typing import Dict, List
 
 import numpy as np
@@ -10,6 +10,7 @@ from openpyxl.workbook.workbook import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from tqdm import tqdm
 
+from Class_dir.Controller import Controller
 from Class_dir.DataCollect import DataCollect
 from Class_dir.LaneManager import LaneManager
 from Class_dir.VehicleClass import Vehicle
@@ -33,16 +34,16 @@ def write_list(ws: Worksheet, writtendata, column, row):
     return row + 1
 
 
-def create_path(lm: LaneManager, seed, dir_name):
-    path = os.getcwd() + "/Data_dir" + "/" + dir_name + "/普及率" + str(lm.penetration * 100) + "%" + "/車両数" + str(
-        lm.car_max)
+def create_path(controller: Controller, lm: LaneManager, seed, dir_name):
+    path = pathlib.Path().cwd() / "Data_dir" / dir_name / ("普及率" + (str(lm.penetration * 100) + "%")) \
+           / ("車両数" + str(lm.car_max))
+    
+    if controller.lc_control is True:
+        path /= "lc_controlあり"
+    else:
+        path /= "lc_control無し"
 
-    try:
-        os.makedirs(path)
-    except FileExistsError:
-        pass
-
-    path += "/" + "seed" + str(seed) + ".xlsx"
+    path /= ("seed" + str(seed) + ".xlsx")
 
     return path
 
@@ -189,7 +190,7 @@ def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm:
             ws.cell(row=row_tmp, column=6).value = dc.get_cd(id=check_car.veh_id).cep  # 検索前方位置
             ws.cell(row=row_tmp, column=7).value = dc.get_cd(id=check_car.veh_id).csp  # 検索後方位置
             for k in range(0, 5):
-                ws.cell(row=row_tmp, column=(8 + k)).value = vehlog.get(time - (k * 10), veh_id).vel_h  # 4秒前までの合流時車両速度
+                ws.cell(row=row_tmp, column=(8 + k)).value = vehlog.get(time - k, veh_id).vel_h  # 4秒前までの合流時車両速度
                 if check_car.vel < 20 / 3.6 and k == 0:  # ! 20km/s以下の車線変更ではセル色を変える changed by koki
                     ws.cell(row=row_tmp, column=8).fill = fill
             ws.cell(row=row_tmp, column=13).value = check_car.vd_h  # 希望速度
@@ -341,17 +342,6 @@ def create_visual_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max)
         ws.column_dimensions[col].width = 8
     ws.freeze_panes = 'A2'  # 先頭行固定
     return ws
-
-
-def abc_from_number(number) -> str:
-    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    colname = ""
-    divend = number
-    while divend > 0:
-        modulo = (divend - 1) % 26
-        colname = alphabet[modulo] + colname
-        divend = (divend - modulo) // 26
-    return colname
 
 
 def create_log_sheet(wb: Workbook, vehlog: Vehlog, time_max):

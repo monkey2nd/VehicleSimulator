@@ -27,7 +27,7 @@ class LaneManager:
         self.penetration = penetration
         self.merging_ratio = merging_ratio
         self.ego_ratio = ego_ratio
-        self.lane_ratio = [0.2, 0.4, 0.4]  # ? 各車線の車両交通量
+        self.lane_ratio = [0.3, 0.3, 0.4]  # ? 各車線の車両交通量
 
         self.acceleration_lane_start = 1000  # ? 加速車線開始位置
         self.acceleration_lane_end = self.acceleration_lane_start + 300  # ? 加速車線終了位置
@@ -245,7 +245,7 @@ class LaneManager:
             elif self.controller.distance_control:
                 if extra_code == 0:
                     if lane == 0:
-                        vd = round(80 / 3.6, 2)
+                        vd = round(85 / 3.6, 2)
                         # self.vd = vd_make(min_vel=86, max_vel=95)
                     elif lane == 1:
                         vd = self.make_vd(min_vel=91, max_vel=100)

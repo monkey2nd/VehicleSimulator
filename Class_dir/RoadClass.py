@@ -17,14 +17,14 @@ from save import create_avg_vel_log, create_info_sheet, create_log_sheet, create
 
 
 class Road:
-    def __init__(self, time_max, interval, controller: Controller) -> None:
+    def __init__(self, time_max, interval, controller: Controller, second_ctrl_ls) -> None:
         self.dc = None
         self.vehlog: Vehlog = Vehlog()
         self.lm: LaneManager | None = None
         self.TIME_MAX = time_max * 10
         self.time = 0
         self.interval = interval
-        self.second_ct_ls = []
+        self.second_ctrl_ls = second_ctrl_ls
         self.controller: Controller = controller
         self.lc_time = 2  # 車線変更時間
 
@@ -465,7 +465,7 @@ class Road:
                     check_car.change_vd(lane=1, controller=self.controller)
                     check_car.info.mode = 2
                     lm.second_control_car_ls.append(check_car)
-                    self.second_ct_ls.append(check_car.veh_id)
+                    self.second_ctrl_ls.append(check_car.veh_id)
 
             if time % self.interval == 0:
                 self.vehlog.append(lm.run_vehicle_ls)
@@ -486,8 +486,8 @@ class Road:
         create_visual_sheet(wb=wb, vehlog=vehlog, lm=lm, time_max=time_max)  # 可視化
         create_log_sheet(wb=wb, vehlog=vehlog, time_max=time_max)
         create_avg_vel_log(wb=wb, vehlog=vehlog)
-        if not self.second_ct_ls == []:
-            create_avg_vel_log(wb=wb, vehlog=vehlog, id_ls=self.second_ct_ls, sheet_title="制御車両平均速度")
+        if not self.second_ctrl_ls == []:
+            create_avg_vel_log(wb=wb, vehlog=vehlog, id_ls=self.second_ctrl_ls, sheet_title="制御車両平均速度")
 
         # create_avg_vel_log(wb=wb, vehlog=vehlog, lm=lm,
         #                    id_ls=[155, 209, 218, 221, 233, 256, 317, 342, 387, 452, 459, 472, 542, 571, 612, 645, 693],
@@ -499,7 +499,7 @@ class Road:
         deceleration_log_sheet(dc=dc, wb=wb, lm=lm)
         if self.controller.use_control:
             lane_penetration_log(wb=wb, vehlog=self.vehlog, lm=lm, time_max=time_max)
-        print(self.second_ct_ls)
+        print(self.second_ctrl_ls)
         print(path, " を保存中...")
         path.parent.mkdir(parents=True, exist_ok=True)
         wb.save(str(path))

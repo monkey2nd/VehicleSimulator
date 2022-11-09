@@ -13,12 +13,13 @@ def simulation(
         dir_name,  # ディレクトリ名
         interval,  # logの保存間隔
         controller,
+        second_ctrl_ls,
         time_max=600,  # シミュレーション時間
 ):
     # ** 初期宣言部分開始
     print("パラメータを初期化中")
     random.seed(seed)  # ! 必ず一番上に記載しておくこと
-    road = Road(time_max=time_max, interval=interval, controller=controller)
+    road = Road(time_max=time_max, interval=interval, controller=controller, second_ctrl_ls=second_ctrl_ls)
     road.lm_init(car_max=veh_max, q_lane0=q_lane0, merging_ratio=merging_ratio, penetration=penetration, ego=ego,
                  seed=seed)
     road.car_init()
@@ -28,3 +29,4 @@ def simulation(
     road.simulation()
 
     road.save(controller=road.controller, seed=seed, dir_name=dir_name)
+    return road.second_ctrl_ls

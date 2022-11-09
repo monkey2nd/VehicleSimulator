@@ -37,11 +37,12 @@ def write_list(ws: Worksheet, writtendata, column, row):
 def create_path(controller: Controller, lm: LaneManager, seed, dir_name):
     path = pathlib.Path().cwd() / "Data_dir" / dir_name / ("普及率" + (str(lm.penetration * 100) + "%")) \
            / ("車両数" + str(lm.car_max))
-    
-    if controller.lc_control is True:
-        path /= "lc_controlあり"
-    else:
-        path /= "lc_control無し"
+
+    if controller.use_control:
+        if controller.lc_control is True:
+            path /= "lc_controlあり"
+        else:
+            path /= "lc_control無し"
 
     path /= ("seed" + str(seed) + ".xlsx")
 
@@ -292,7 +293,7 @@ def abc_from_number(number):  # 可視化するのに使う関数
 
 
 def create_visual_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max):
-    def draw_vehicle(ws: Worksheet, vehicle: Vehtpl, setting_dic: dict[str, Border], row, column):
+    def draw_vehicle(ws: Worksheet, vehicle: Vehtpl, setting_dic: Dict[str, Border], row, column):
         _color = colorBarRGB2(vehicle.type, vehicle.shift_lane)
         ws.cell(row=row, column=column).font = Font(b=True, color=_color)
         ws.cell(row=row, column=column).value = str(vehicle.veh_id) + str("/") + str(int(vehicle.vel_h))  # IDを記録1

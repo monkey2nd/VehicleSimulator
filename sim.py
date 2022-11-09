@@ -1,14 +1,17 @@
 from datetime import datetime
 
 from Class_dir.Controller import Controller
+from Class_dir.LaneChangeMemo import LaneChangeMemo
 from cal import simulation
 
 
-def sim(CAR_MAX, merging_ratio, penetration, ego, seed, dir_name, q_lane0, interval, controller: Controller):
+def sim(car_max, merging_ratio, penetration, ego, seed, dir_name, q_lane0, interval, controller: Controller,
+        second_ctrl_ls):
     if penetration == 0:
         merging_ratio = 0
-    simulation(veh_max=CAR_MAX, q_lane0=q_lane0, merging_ratio=merging_ratio, penetration=penetration, ego=ego,
-               seed=seed, dir_name=dir_name, interval=interval, controller=controller)
+    return simulation(veh_max=car_max, q_lane0=q_lane0, merging_ratio=merging_ratio, penetration=penetration, ego=ego,
+                      seed=seed, dir_name=dir_name, interval=interval, controller=controller,
+                      second_ctrl_ls=second_ctrl_ls)
 
 
 if __name__ == "__main__":
@@ -31,39 +34,41 @@ if __name__ == "__main__":
     # car_max_ls = range(500, 601, 50)
     # car_max_ls = [750]
     # todo veh_max_lsにて車両数を増やし事故が発生するパターンを確認するまた手動運転車両の挙動についても確認
-    # todo lc制御あり，なしにおけるlc制御車両リストの引き渡し処理
     # todo 合流した車両が合流後希望速度20/3.6+されてしまっている => control_mode と　mode 使い分けないと難しいかも(一応終了)
+    # todo 乱数の種類を増やしたうえで結果を出す
+    # todo lc制御無しのほうが結果が良くなってしまっている訳を可視化で確認(10%において結果が出すぎている）
+    # todo 合流車両に対して各制御方式においてどの程度自動運転車両が対応しているか
+
     veh_max_ls = [700]
 
-    penetration_ls = [0, 0.3]
+    penetration_ls = [0, 0.1, 0.3]
 
     merging_ratio_ls = [0.5]  # ** 合流車両の普及率(0-1)
 
     # seed_ls = range(10)
     seed_ls = [11]
 
-    q_lane0_ls = [70]
+    q_lane0_ls = [50, 80]
 
     ego_ls = [0]
-    default_cfg = {"speed_control": False, "distance_control": False, "lc_control": False, "merging_control": False}
+    default_cfg = {"speed_control": False, "distance_control": False, "lc_control": False,
+                   "merging_control": False}  # penetration==0用のcfg
     controller_cfgs = [{"speed_control": False, "distance_control": True, "lc_control": True, "merging_control": True},
                        {"speed_control": False, "distance_control": True, "lc_control": False, "merging_control": True}]
 
     sim_time = 1  # ? シミュレーションを行っている回数
 
     sim_time_max = 0
+
+    sim_time_max += len(veh_max_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(ego_ls) \
+                    * len([_ for _ in penetration_ls if _ != 0]) * len(controller_cfgs)
     if 0 in penetration_ls:
         sim_time_max += len(veh_max_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(ego_ls)
-        sim_time_max += len(veh_max_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(ego_ls) \
-                        * (len(penetration_ls) - 1) * len(controller_cfgs)
-    else:
-        sim_time_max += len(veh_max_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(ego_ls) \
-                        * len(penetration_ls) * len(controller_cfgs)
 
     interval_log = 10  # (0.1s)
-    # controller.lc_control = False
+    lc_memo = LaneChangeMemo()
 
-    for CAR_MAX in veh_max_ls:
+    for veh_max in veh_max_ls:
         for penetration in penetration_ls:
             for merging_ratio in merging_ratio_ls:
                 for ego in ego_ls:
@@ -72,7 +77,8 @@ if __name__ == "__main__":
                             if penetration == 0:
                                 controller = Controller(**default_cfg)
                                 print("実行中... " + str(sim_time) + "/" + str(sim_time_max))
-                                sim(CAR_MAX=CAR_MAX,
+                                second_ctrl_id_ls_tmp = []
+                                sim(car_max=veh_max,
                                     merging_ratio=merging_ratio,
                                     penetration=penetration,
                                     ego=ego,
@@ -80,23 +86,36 @@ if __name__ == "__main__":
                                     dir_name=dir_name,
                                     q_lane0=q_lane0,
                                     interval=interval_log,
-                                    controller=controller)
+                                    controller=controller,
+                                    second_ctrl_ls=second_ctrl_id_ls_tmp)
+                                sim_time += 1
                             else:
                                 for ctl_cfg in controller_cfgs:
                                     controller = Controller(**ctl_cfg)
                                     print("実行中... " + str(sim_time) + "/" + str(sim_time_max))
-                                    sim(CAR_MAX=CAR_MAX,
-                                        merging_ratio=merging_ratio,
-                                        penetration=penetration,
-                                        ego=ego,
-                                        seed=seed,
-                                        dir_name=dir_name,
-                                        q_lane0=q_lane0,
-                                        interval=interval_log,
-                                        controller=controller)
+                                    second_ctrl_id_ls = []
+                                    if not ctl_cfg["lc_control"]:
+                                        second_ctrl_id_ls = lc_memo.get(veh_max=veh_max, merging_ratio=merging_ratio,
+                                                                        seed=seed, q_lane0=q_lane0, ego=ego,
+                                                                        penetration=penetration)
 
-                            sim_time += 1
+                                    second_ctrl_id_ls = sim(car_max=veh_max,
+                                                            merging_ratio=merging_ratio,
+                                                            penetration=penetration,
+                                                            ego=ego,
+                                                            seed=seed,
+                                                            dir_name=dir_name,
+                                                            q_lane0=q_lane0,
+                                                            interval=interval_log,
+                                                            controller=controller,
+                                                            second_ctrl_ls=second_ctrl_id_ls)
+                                    if controller.lc_control:
+                                        lc_memo.set(veh_max=veh_max, merging_ratio=merging_ratio, seed=seed,
+                                                    q_lane0=q_lane0, ego=ego, penetration=penetration,
+                                                    id_ls=second_ctrl_id_ls)
+                                    sim_time += 1
 
-    # result.make_result(dir_name=dir_name, penetration_ls=penetration_ls, car_max_ls=car_max_ls, seed_ls=seed_ls)
+    # result.make_result(dir_name=dir_name, penetration_ls=penetration_ls, car_max_ls=veh_max_ls, seed_ls=seed_ls,
+    #                    ctrl_cfgs=controller_cfgs)
     # line.notify()
     print("終了")

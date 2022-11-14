@@ -29,25 +29,21 @@ class LaneManager:
         self.ego_ratio = ego_ratio
         self.lane_ratio = [0.3, 0.3, 0.4]  # ? 各車線の車両交通量
 
-        self.acceleration_lane_start = 1000  # ? 加速車線開始位置
+        self.acceleration_lane_start = 1200  # ? 加速車線開始位置
         self.acceleration_lane_end = self.acceleration_lane_start + 300  # ? 加速車線終了位置
         self.road_length = self.acceleration_lane_end + 400  # ? 道路の長さ
 
-        self.ego_area1 = self.acceleration_lane_start + 100
-        self.ego_area2 = self.ego_area1 + 100
-        self.ego_area3 = self.acceleration_lane_end
-
         # self.vel_sensor_area = 10  # ? 合流車線を走る普通車両の速度検出を行うvel_sensorの検知範囲
-        self.vel_sensor_point = 900  # ? 通信開始位置
+        self.vel_sensor_point = 1100  # ? 通信開始位置
         self.communication_area = 30  # ? 通信範囲
         # self.communication_start_point = 800  # ? 通信開始位置
 
-        self.second_control_point = 100  # ? 第二走行車線を走る自動運転車両を第一走行車線に車線変更させる処理開始地点
+        self.second_control_point = 300  # ? 第二走行車線を走る自動運転車両を第一走行車線に車線変更させる処理開始地点
         self.second_control_car_ls = []  # ? 制御により左車線などに移動させた車両クラスリスト
         self.second_control_car_limit = 99
 
-        self.third_control_point = 300  # ? 自動運転車両のtauを変更し始める地点
-
+        self.third_control_point = 500  # ? 自動運転車両のtauを変更し始める地点
+        self.no_lane_change_point = 100  # ? 車線変更禁止地点
         # self.car_ls_changed_alpha = []
         # self.car_limit_changed_alpha = 3
         self.controller: Controller = controller

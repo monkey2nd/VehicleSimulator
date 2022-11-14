@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import result
 from Class_dir.Controller import Controller
 from Class_dir.LaneChangeMemo import LaneChangeMemo
 from cal import simulation
@@ -9,6 +10,8 @@ def sim(car_max, merging_ratio, penetration, ego, seed, dir_name, q_lane0, inter
         second_ctrl_ls):
     if penetration == 0:
         merging_ratio = 0
+    else:
+        merging_ratio = penetration
     return simulation(veh_max=car_max, q_lane0=q_lane0, merging_ratio=merging_ratio, penetration=penetration, ego=ego,
                       seed=seed, dir_name=dir_name, interval=interval, controller=controller,
                       second_ctrl_ls=second_ctrl_ls)
@@ -39,16 +42,20 @@ if __name__ == "__main__":
     # todo lc制御無しのほうが結果が良くなってしまっている訳を可視化で確認(10%において結果が出すぎている）
     # todo 合流車両に対して各制御方式においてどの程度自動運転車両が対応しているか
 
-    veh_max_ls = [700]
+    # todo 開始100mは車線変更しないzoneを作成
+    # todo lc_ctrlのシステムを変換する
 
-    penetration_ls = [0, 0.1, 0.3]
+    veh_max_ls = [650, 700]
+
+    # penetration_ls = [0, 0.05, 0.1, 0.3]
+    penetration_ls = [0, 0.05, 0.1, 0.2, 0.3]
 
     merging_ratio_ls = [0.5]  # ** 合流車両の普及率(0-1)
 
     # seed_ls = range(10)
-    seed_ls = [11]
-
-    q_lane0_ls = [50, 80]
+    # seed_ls = range(10)
+    seed_ls = range(3)
+    q_lane0_ls = [50]
 
     ego_ls = [0]
     default_cfg = {"speed_control": False, "distance_control": False, "lc_control": False,
@@ -115,7 +122,7 @@ if __name__ == "__main__":
                                                     id_ls=second_ctrl_id_ls)
                                     sim_time += 1
 
-    # result.make_result(dir_name=dir_name, penetration_ls=penetration_ls, car_max_ls=veh_max_ls, seed_ls=seed_ls,
-    #                    ctrl_cfgs=controller_cfgs)
+    result.make_result(dir_name=dir_name, penetration_ls=penetration_ls, car_max_ls=veh_max_ls, seed_ls=seed_ls,
+                       ctrl_cfgs=controller_cfgs, merging_ls=q_lane0_ls)
     # line.notify()
     print("終了")

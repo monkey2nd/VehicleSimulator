@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
@@ -35,8 +35,8 @@ def write_list(ws: Worksheet, writtendata, column, row):
 
 
 def create_path(controller: Controller, lm: LaneManager, seed, dir_name):
-    path = pathlib.Path().cwd() / "Data_dir" / dir_name / ("普及率" + (str(lm.penetration * 100) + "%")) \
-           / ("車両数" + str(lm.car_max))
+    path: Path = Path().cwd() / "Data_dir" / dir_name / ("普及率" + (str(lm.penetration * 100) + "%")) / \
+                 ("車両数" + str(sum(lm.q_lane_ls[1:])) + "_" + str(lm.q_lane_ls[0]))
 
     if controller.use_control:
         if controller.lc_control is True:
@@ -319,24 +319,24 @@ def create_visual_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max)
 
     for time in tqdm(range(time_max), desc='visualize'):
         vehicle_timelog = vehlog.get(time)
+        for car_id in range(1, lm.road_length):  # 罫線引くところ 20200615
+            ws.cell(row=car_id, column=lane_num + lane_num * time).border = border
         if not vehicle_timelog == {}:
             ws.cell(row=1, column=1 + lane_num * time).value = time  # IDを記録1
             for check_vehicle in vehicle_timelog.values():
                 lane = check_vehicle.lane
-                draw_vehicle(ws=ws, vehicle=check_vehicle, row=check_vehicle.front,
+                draw_vehicle(ws=ws, vehicle=check_vehicle, row=int(check_vehicle.front),
                              setting_dic=setting_dict,
                              column=check_vehicle.lane + 1 + lane_num * time)
 
                 # 車線が変わった時だけセル色を変える
                 if lane != lane_id_list[check_vehicle.veh_id] and lane_id_list[check_vehicle.veh_id] != 0:
-                    ws.cell(row=check_vehicle.front,
+                    ws.cell(row=int(check_vehicle.front),
                             column=check_vehicle.lane + 1 + lane_num * time).fill = fill
                 if check_vehicle.shift_begin_time + 30 < time and lane == 1 and check_vehicle.shift_lane is True:
-                    ws.cell(row=check_vehicle.front,
+                    ws.cell(row=int(check_vehicle.front),
                             column=check_vehicle.lane + 1 + lane_num * time).fill = fill
                 lane_id_list[check_vehicle.veh_id] = lane
-        for car_id in range(1, lm.road_length):  # 罫線引くところ 20200615
-            ws.cell(row=car_id, column=lane_num + lane_num * time).border = border
 
     for time in range(time_max):
         col = abc_from_number(time + 1)

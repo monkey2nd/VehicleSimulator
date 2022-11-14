@@ -115,24 +115,25 @@ class Road:
 
     def manual_shift_to_right(self, vehicle: Vehicle):
         run_car_info = vehicle.info
-        if vehicle.vel_h < vehicle.vd_h - vehicle.info.vdcl_h:  # (希望速度-vdcl_h) km/h より遅いか
-            if vehicle.accel <= 0 and vehicle.front_veh is not None:
-                # 前方に車両がある（なければその車線を走ってれば加速できるため）かつ減速している（加速している場合はその車線を走れば速度が上がるため）
-                if vehicle.front_veh.shift_lane is False:
-                    leader, follower = self.getneighbors(vehicle=vehicle,
-                                                         dst_lane=vehicle.lane + 1)  # next_carのみ必要（leader:車線変更先の前方車両）
-                    if leader is None or leader.vel_h - vehicle.front_veh.vel_h > run_car_info.vdcl_h:  # ?
-                        # 車線変更先の前方車両が現在の前方車両より 5km/h　以上速い場合
-                        if self.can_shift(vehicle=vehicle, dst_lane=vehicle.lane + 1):  # ? 物理的に車線変更できるか
-                            if generate_random(per=0.5):  # ? みんながみんな車線変更するわけではないので確率を当てる
-                                vehicle.shift_lane = True
-                                vehicle.shift_lane_to = vehicle.lane + 1
-                                vehicle.change_vd(controller=self.controller, lane=vehicle.lane + 1)
-                                vehicle.shift_begin_time = self.time
-                                run_car_info.mode = 2
-                                if not follower is None:
-                                    follower.shift_front_veh = vehicle
-                                return True
+        if self.lm.no_lane_change_point > vehicle.back:
+            if vehicle.vel_h < vehicle.vd_h - vehicle.info.vdcl_h:  # (希望速度-vdcl_h) km/h より遅いか
+                if vehicle.accel <= 0 and vehicle.front_veh is not None:
+                    # 前方に車両がある（なければその車線を走ってれば加速できるため）かつ減速している（加速している場合はその車線を走れば速度が上がるため）
+                    if vehicle.front_veh.shift_lane is False:
+                        leader, follower = self.getneighbors(vehicle=vehicle,
+                                                             dst_lane=vehicle.lane + 1)  # next_carのみ必要（leader:車線変更先の前方車両）
+                        if leader is None or leader.vel_h - vehicle.front_veh.vel_h > run_car_info.vdcl_h:  # ?
+                            # 車線変更先の前方車両が現在の前方車両より 5km/h　以上速い場合
+                            if self.can_shift(vehicle=vehicle, dst_lane=vehicle.lane + 1):  # ? 物理的に車線変更できるか
+                                if generate_random(per=0.5):  # ? みんながみんな車線変更するわけではないので確率を当てる
+                                    vehicle.shift_lane = True
+                                    vehicle.shift_lane_to = vehicle.lane + 1
+                                    vehicle.change_vd(controller=self.controller, lane=vehicle.lane + 1)
+                                    vehicle.shift_begin_time = self.time
+                                    run_car_info.mode = 2
+                                    if not follower is None:
+                                        follower.shift_front_veh = vehicle
+                                    return True
         return False
 
     def calculate_accel(self, veh: Vehicle):
@@ -455,8 +456,8 @@ class Road:
                 vehicle.update_car(time=time)
                 if vehicle.shift_lane:
                     leader, follower = self.getneighbors(vehicle=vehicle, dst_lane=vehicle.shift_lane_to)
-                    # if follower is not None:
-                    # todo 車線変更される車両だけでなく車線変更する車両にも車線変更先のfollowerを記録させNoneだった時の対処を記載する
+                    if follower is not None and follower.shift_front_veh is None:
+                        follower.shift_front_veh = vehicle
             if self.controller.lc_control:
                 if not second_control_car_ls_tmp == [] and len(lm.second_control_car_ls) < lm.second_control_car_limit:
                     check_car = second_control_car_ls_tmp[-1]

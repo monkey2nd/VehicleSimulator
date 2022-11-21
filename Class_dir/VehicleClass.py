@@ -243,15 +243,19 @@ class Vehicle:
         self.front = round(self.front + self.vel / 10, 2)
         self.accel = round(self.accel, 2)
 
-        if self.shift_lane is True and time == self.shift_begin_time + 20:
-            self.lane = self.shift_lane_to
-            self.shift_lane_to = self.shift_begin_time = self.shift_distance_go = 0
-            self.shift_lane = False
-            run_car_info.merging_flag = False
-            if self.app_veh is not None:
-                self.app_veh.info.mode = 0
-                self.app_veh.apped_veh = None
-                self.app_veh = None
+        if self.shift_lane is True:
+            if (
+                    (not self.lane == 0 and time == self.shift_begin_time + self.info.shift_interval) or
+                    (self.lane == 0 and time == self.shift_begin_time + self.info.merging_interval)
+            ):
+                self.lane = self.shift_lane_to
+                self.shift_lane_to = self.shift_begin_time = self.shift_distance_go = 0
+                self.shift_lane = False
+                run_car_info.merging_flag = False
+                if self.app_veh is not None:
+                    self.app_veh.info.mode = 0
+                    self.app_veh.apped_veh = None
+                    self.app_veh = None
 
         if self.shift_front_veh is self.front_veh:  # 前方に車線変更してくる車両が車線変更し終わったら
             self.shift_front_veh = None
@@ -277,12 +281,14 @@ class VehicleInfo:
         self.occur_time = 0  # 9車両発生時刻
         self.mode = 0  # ? 現在の状態を表す変数(0:通常走行中,2:車線変更中,3加速制御,4:減速制御,5:減速軽減)
         self.shift_time = 0  # ? 15 手動運転車両が車線変更する時間
+        self.shift_interval = 2  # 本線車線変更インターバル
+        self.merging_interval = 0  # 合流時車線変更インターバル
         self.min_vel = 0
         self.vdcl = 0  # ? vel diff to change lanes 車線変更を行う希望速度と走行速度の速度差
-        self.vel_sensor_flag = 0  # ? 自動合流を行う際vel_sensor_pointを通過したかどうか
-        self.second_flag = 0  # ? 第二制御（第二走行車線から第一走行車線に車線変更を行う制御）を行ったかどうか
-        self.tau_changed_flag = False  # tauが初期状態から変更されているかを確認するフラグ
-        self.merging_flag = False  # 合流時希望速度変更を行ったかを確認するフラグ
+        self.vel_sensor_flag: bool = False  # ? 自動合流を行う際vel_sensor_pointを通過したかどうか
+        self.second_flag: bool = False  # ? 第二制御（第二走行車線から第一走行車線に車線変更を行う制御）を行ったかどうか
+        self.tau_changed_flag: bool = False  # tauが初期状態から変更されているかを確認するフラグ
+        self.merging_flag: bool = False  # 合流時希望速度変更を行ったかを確認するフラグ
 
     @property
     def list(self) -> List:

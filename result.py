@@ -1,38 +1,38 @@
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 import numpy as np
 import openpyxl as px
 from openpyxl.worksheet.worksheet import Worksheet
 
 
-def make_result(dir_name: str, penetration_ls, car_max_ls, seed_ls, merging_ls, ctrl_cfgs):
+def make_result(dir_path: Path, penetration_ls, car_max_ls, seed_ls, merging_ls, ctrl_cfgs):
     """
     save.pyは各シミュレーション結果を記録するプログラム
     result.pyはsave.pyにて保存されたファイルから全体の結果を記録するプログラム
     """
 
-    source_path = Path().cwd() / "Data_dir" / dir_name
-    wb_name = "result" + dir_name + ".xlsx"
+    wb_name = "result_" + dir_path.name + ".xlsx"
     data_set = [[[] for _ in range(len(penetration_ls))] for __ in range(len(car_max_ls))]
     wb = px.Workbook()
 
     col_title_ls = ["[-10]", "[10-20]", "[20-30]", "[30-40]", "40-", "平均占有率"]
-    it_max = len(penetration_ls) * len(car_max_ls) * len(ctrl_cfgs)
+    it_max = len(penetration_ls) * len(car_max_ls) * len(ctrl_cfgs) * len(merging_ls)
     it_count = 1
 
     for ctrl_cfg in ctrl_cfgs:
-        if ctrl_cfg["lc_control"]:
-            ws = wb.create_sheet("lc_あり")
-        else:
-            ws = wb.create_sheet("lc_無し")
-        for num_p, penetration in enumerate(penetration_ls):
-            col_s = num_p * (len(col_title_ls) + 3) + 1
-            for num_c, car_max in enumerate(car_max_ls):
-                for num_m in merging_ls:
+        for num_m in merging_ls:
+            if ctrl_cfg["lc_control"]:
+                ws = wb.create_sheet("lc_あり_合流者数" + str(num_m))
+            else:
+                ws = wb.create_sheet("lc_無し_合流者数" + str(num_m))
+            for num_p, penetration in enumerate(penetration_ls):
+                col_s = num_p * (len(col_title_ls) + 3) + 1
+                for num_c, car_max in enumerate(car_max_ls):
+
                     print(str(it_count) + "/" + str(it_max) + "データ形成中")
                     row_s = num_c * (len(seed_ls) + 4) + 1
-                    f_path = source_path / ("普及率" + str(penetration * 100) + "%") / \
+                    f_path = dir_path / ("普及率" + str(penetration * 100) + "%") / \
                              ("車両数" + str(car_max) + "_" + str(num_m))
                     if not penetration == 0:
                         if ctrl_cfg["lc_control"]:
@@ -41,8 +41,7 @@ def make_result(dir_name: str, penetration_ls, car_max_ls, seed_ls, merging_ls, 
                             f_path /= "lc_control無し"
 
                     table = get_table(col_title_ls=col_title_ls, seed_ls=seed_ls, car_max=car_max,
-                                      penetration=penetration, path=f_path, data_set=data_set, num_p=num_p,
-                                      num_c=num_c, )
+                                      penetration=penetration, path=f_path, data_set=data_set, num_p=num_p, num_c=num_c)
                     write_list(ws=ws, input_data=table, column=col_s, row=row_s)
                     it_count += 1
                     # if penetration == 0:
@@ -66,8 +65,8 @@ def make_result(dir_name: str, penetration_ls, car_max_ls, seed_ls, merging_ls, 
             get_table2(ws=ws, data_set=data_set, penetration_ls=penetration_ls, car_max_ls=car_max_ls,
                        col_title_ls=col_title_ls)
 
-    print(str(source_path) + "/" + wb_name + "を保存中...")
-    wb.save(str(source_path) + "/" + wb_name)
+    print(str(dir_path) + "/" + wb_name + "を保存中...")
+    wb.save(str(dir_path) + "/" + wb_name)
 
 
 def write_list(ws: Worksheet, input_data, column, row):
@@ -81,16 +80,16 @@ def write_list(ws: Worksheet, input_data, column, row):
             ws.cell(column=column + index, row=row).value = data
 
 
-def get_template(col_title_ls, seed_ls, car_max, penetration) -> List[List]:
+def get_template(col_title_ls, seed_ls, car_max, penetration) -> List[List[Any]]:
     """
     記録するデータのテンプレート
     """
     app_list = [None for _ in range(len(col_title_ls))]
-    col_title = [car_max] + col_title_ls
+    col_title = [str(car_max) + "普及率:" + str(penetration)] + col_title_ls
     template = [col_title]
     for seed in seed_ls:
         template.append([seed] + app_list)
-    template.append([penetration * 100] + app_list)
+    template.append(["平均値"] + app_list)
     template.append(["標準偏差"] + app_list)
 
     return template
@@ -104,8 +103,8 @@ def get_data(seed_ls, penetration, path: Path, data_set: List[List],
     data = []
     for seed in seed_ls:
         data_tmp = []
-        path /= "seed" + str(seed) + ".xlsx"
-        wb = px.load_workbook(str(path), read_only=True, data_only=True)
+        f_path = path / ("seed" + str(seed) + ".xlsx")
+        wb = px.load_workbook(str(f_path), read_only=True, data_only=True)
         for data_sources in wb["減速量"]["G3":"K3"]:
             for data_source in data_sources:
                 data_tmp.append(data_source.value)

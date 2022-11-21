@@ -33,11 +33,11 @@ class Vehtpl(NamedTuple):
 
     @property
     def vel_h(self):
-        return self.vel * 3.6
+        return round(self.vel * 3.6, 2)
 
     @property
     def delta_v_h(self):
-        return self.delta_v * 3.6
+        return round(self.delta_v * 3.6, 2)
 
     @property
     def back(self):
@@ -45,18 +45,19 @@ class Vehtpl(NamedTuple):
 
     @property
     def vd_h(self):
-        return self.vd * 3.6
+        return round(self.vd * 3.6, 2)
 
     @property
     def vdcl_h(self):
-        return self.vdcl * 3.6
+        return round(self.vdcl * 3.6, 2)
 
 
 def make_vehtpl(veh_cls: Vehicle):
-    return Vehtpl(veh_cls.veh_id, veh_cls.front, veh_cls.lane, veh_cls.vel, veh_cls.vd, veh_cls.accel,
-                  veh_cls.info.vdcl,
-                  veh_cls.distance,
-                  veh_cls.desired_distance, veh_cls.delta_v_h, veh_cls.tau,
+    return Vehtpl(veh_cls.veh_id, veh_cls.front, veh_cls.lane, veh_cls.vel, round(veh_cls.vd, 2),
+                  round(veh_cls.accel, 2),
+                  round(veh_cls.info.vdcl, 2),
+                  round(veh_cls.distance, 1),
+                  veh_cls.desired_distance, round(veh_cls.delta_v_h, 2), veh_cls.tau,
                   veh_cls.front_veh.veh_id if veh_cls.front_veh is not None else None,
                   veh_cls.back_veh.veh_id if veh_cls.back_veh is not None else None,
                   veh_cls.target_veh.veh_id if veh_cls.target_veh is not None else None,

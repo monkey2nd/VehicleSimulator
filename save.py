@@ -21,32 +21,33 @@ def search_veh(car: List[List[Vehicle]], time, veh_id) -> Vehicle:
     return next((check_car for check_car in car[time] if check_car.veh_id == veh_id), None)
 
 
-def write_list(ws: Worksheet, writtendata, column, row):
+def write_list(ws: Worksheet, written_data, column=1, row=1):
     """
     一次元又は二次元のリストをエクセルに直接書き込める関数
     返却値は次のrow(行）
     """
-    for index, data in enumerate(writtendata):
+    for index, data in enumerate(written_data):
         if type(data) in (List, list, np.ndarray):
-            write_list(ws=ws, writtendata=data, column=column, row=row + index)
+            write_list(ws=ws, written_data=data, column=column, row=row + index)
         else:
             ws.cell(column=column + index, row=row).value = data
     return row + 1
 
 
-def create_path(controller: Controller, lm: LaneManager, seed, dir_name):
-    path: Path = Path().cwd() / "Data_dir" / dir_name / ("普及率" + (str(lm.penetration * 100) + "%")) / \
-                 ("車両数" + str(sum(lm.q_lane_ls[1:])) + "_" + str(lm.q_lane_ls[0]))
+def create_path(controller: Controller, lm: LaneManager, seed, dir_path: Path):
+    f_path = dir_path \
+             / ("普及率" + (str(lm.penetration * 100) + "%")) \
+             / ("車両数" + str(sum(lm.q_lane_ls[1:])) + "_" + str(lm.q_lane_ls[0]))
 
     if controller.use_control:
         if controller.lc_control is True:
-            path /= "lc_controlあり"
+            f_path /= "lc_controlあり"
         else:
-            path /= "lc_control無し"
+            f_path /= "lc_control無し"
 
-    path /= ("seed" + str(seed) + ".xlsx")
+    f_path /= ("seed" + str(seed) + ".xlsx")
 
-    return path
+    return f_path
 
 
 def create_excel_file():
@@ -57,21 +58,18 @@ def create_excel_file():
 
 def create_info_sheet(wb: Workbook, lm: LaneManager, time_max):
     ws = wb.create_sheet("情報")
-    row = 1
-    row = write_list(ws=ws, writtendata=["シミュレーション時間", time_max / 10], row=row, column=1)
-    row = write_list(ws=ws, writtendata=["加速交通量", lm.get_q(0)], row=row, column=1)
-    row = write_list(ws=ws, writtendata=["第一走行交通量", lm.get_q(1)], row=row, column=1)
-    row = write_list(ws=ws, writtendata=["第二走行交通量", lm.get_q(2)], row=row, column=1)
-    row = write_list(ws=ws, writtendata=["追い越し交通量", lm.get_q(3)], row=row, column=1)
-
-    ws.cell(row=6, column=1).value = "加速車線開始[m]"
-    ws.cell(row=6, column=2).value = lm.acceleration_lane_start
-    ws.cell(row=7, column=1).value = "加速車線終了[m]"
-    ws.cell(row=7, column=2).value = lm.acceleration_lane_end
-    ws.cell(row=8, column=1).value = "基地局"
-    ws.cell(row=8, column=2).value = lm.controller.use_control
-    ws.cell(row=9, column=1).value = "合流車両の割合"
-    ws.cell(row=9, column=2).value = lm.merging_ratio
+    data = [
+        ["シミュレーション時間", time_max / 10],
+        ["加速交通量", lm.get_q(0)],
+        ["第一走行交通量", lm.get_q(1)],
+        ["第二走行交通量", lm.get_q(2)],
+        ["追い越し交通量", lm.get_q(3)],
+        ["加速車線開始[m]", lm.acceleration_lane_start],
+        ["加速車線終了[m]", lm.acceleration_lane_end],
+        ["基地局", lm.controller.use_control],
+        ["合流車両の割合", lm.merging_ratio]
+    ]
+    write_list(ws=ws, written_data=data)
 
 
 def check_veh_lane(vehlog: Vehlog, lane):
@@ -142,104 +140,77 @@ def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm:
     # ここから加速車線から走行車線に移動するまでにかかった時間を記録する
     ws = wb.create_sheet(title="合流にかかった時間")
     fill = PatternFill(patternType='solid', fgColor='FF0000')
-    row_tmp = 2
-    ws.cell(row=row_tmp, column=1).value = "Id"
-    ws.cell(row=row_tmp, column=2).value = "車線変更時刻"
-    ws.cell(row=row_tmp, column=3).value = "車両生成から車線変更終了までの時間"
-    ws.cell(row=row_tmp, column=4).value = "位置"
-    ws.cell(row=row_tmp, column=5).value = "譲った車両"
-    ws.cell(row=row_tmp, column=6).value = "検索前方位置"
-    ws.cell(row=row_tmp, column=7).value = "検索後方位置"
-    ws.cell(row=row_tmp, column=8).value = "合流時車両速度"
-    ws.cell(row=row_tmp, column=9).value = "1秒前合流時車両速度"
-    ws.cell(row=row_tmp, column=10).value = "2秒前合流時車両速度"
-    ws.cell(row=row_tmp, column=11).value = "3秒前合流時車両速度"
-    ws.cell(row=row_tmp, column=12).value = "4秒前合流時車両速度"
-    ws.cell(row=row_tmp, column=13).value = "希望速度"
-    ws.cell(row=row_tmp, column=14).value = "車両発生時刻"
-    ws.cell(row=row_tmp, column=15).value = "type"
-    row_tmp += 1
+    title_ls = ["ID", "Type", "車線変更時刻", "車両生成から車線変更までの時間", "位置", "譲った車両ID", "前方通信位置",
+                "後方通信位置", "希望速度", "合流時車両速度", "1秒前合流時車両速度", "2秒前合流時車両速度",
+                "3秒前合流時車両速度", "4秒前合流時車両速度"]
+    row = write_list(ws=ws, written_data=title_ls)
     time_tmp = 0
     sum1 = 0
     sum2 = 0
     sum_tmp = 0
     # ##合流できた車両の合流までにかかった時間を調べる###
-    check_car_old = None
-    check_car = None
+    check_veh_old = None
+    check_veh = None
     for veh_id in range(1, lm.car_max):  # 車両IDが0の車は除く
         for time in range(time_max):
-            check_car_old = check_car
-            check_car = vehlog.get(time, veh_id)
-            if check_car is not None:
-                if lm.acceleration_lane_start < check_car.back:
-                    if check_car.lane == 0:
+            check_veh = vehlog.get(time, veh_id)
+            if check_veh is not None:
+                if lm.acceleration_lane_start < check_veh.back:
+                    if check_veh.lane == 0:
                         time_tmp += 1  # 合流区間を走った時間を記録している
+                        check_veh_old = check_veh
                     else:
+                        lc_time = time
                         break
 
         # 加速車線を走っていた時間が0秒より長く、最後の時間の車線が加速車線でないとき、合流できた車両とみなす
 
-        if time_tmp > 0 and check_car is not None and check_car.lane != 0:
-            ws.cell(row=row_tmp, column=1).value = veh_id  # 合流できた車両ID
-            ws.cell(row=row_tmp, column=2).value = time
-
-            ws.cell(row=row_tmp, column=3).value = time_tmp  # 合流できるまでにかかった時間
-            ws.cell(row=row_tmp, column=4).value = check_car.front  # 合流した位置
-            if lm.acceleration_lane_end - 50 < check_car.front:  # 950m以降の車線変更ではセル色を変える
-                ws.cell(row=row_tmp, column=4).fill = fill
-            ws.cell(row=row_tmp, column=5).value = check_car_old.app_car_id  # 譲った車両
-            ws.cell(row=row_tmp, column=6).value = dc.get_cd(id=check_car.veh_id).cep  # 検索前方位置
-            ws.cell(row=row_tmp, column=7).value = dc.get_cd(id=check_car.veh_id).csp  # 検索後方位置
+        if time_tmp > 0 and check_veh is not None and check_veh.lane != 0:
+            data_ls = [veh_id, check_veh.type, lc_time, time_tmp, check_veh.front, check_veh_old.app_car_id,
+                       dc.get_cd(id=check_veh.veh_id).cep, dc.get_cd(id=check_veh.veh_id).csp, check_veh.vd_h]
+            if lm.acceleration_lane_end - 50 < check_veh.front:  # 950m以降の車線変更ではセル色を変える
+                ws.cell(row=row, column=5).fill = fill
             for k in range(0, 5):
-                ws.cell(row=row_tmp, column=(8 + k)).value = vehlog.get(time - k, veh_id).vel_h  # 4秒前までの合流時車両速度
-                if check_car.vel < 20 / 3.6 and k == 0:  # ! 20km/s以下の車線変更ではセル色を変える changed by koki
-                    ws.cell(row=row_tmp, column=8).fill = fill
-            ws.cell(row=row_tmp, column=13).value = check_car.vd_h  # 希望速度
-            # ws.cell(row=row_tmp, column=14).value = check_car.info.occur_time / 10  # 車両発生時刻
-            ws.cell(row=row_tmp, column=14).value = check_car.type
-            if time >= 3000:
+                data_ls.append(vehlog.get(lc_time - k, veh_id).vel_h)  # 4秒前までの合流時車両速度
+                if check_veh.vel < 60 / 3.6 and k == 0:  # ! 20km/s以下の車線変更ではセル色を変える changed by koki
+                    ws.cell(row=row, column=10).fill = fill
+            if lc_time >= 300:
                 sum1 += time_tmp
-                sum2 += check_car.front
+                sum2 += check_veh.front
                 sum_tmp += 1
-            row_tmp += 1
+            row = write_list(ws=ws, written_data=data_ls, row=row)
         time_tmp = 0
     if sum_tmp != 0:
         ave_time = sum1 / sum_tmp
         ave_length = sum2 / sum_tmp
-        ws.cell(row=row_tmp + 1, column=1).value = "300秒以降の車両の時間平均値"
-        ws.cell(row=row_tmp + 1, column=2).value = ave_time / 10
-        ws.cell(row=1, column=1).value = ave_time / 10
-        ws.cell(row=row_tmp + 2, column=1).value = "300秒以降の車両の距離平均値"
-        ws.cell(row=row_tmp + 2, column=2).value = ave_length - lm.acceleration_lane_start
-        ws.cell(row=1, column=2).value = ave_length - lm.acceleration_lane_start
-    row_tmp = 3
+        data_ls = [["300秒以降の車両の時間平均値", "300秒以降の車両の距離平均値"],
+                   [ave_time / 10, ave_length - lm.acceleration_lane_start]]
+        row = write_list(ws=ws, written_data=data_ls, row=row)
     time_tmp = 0
     sum1 = 0
     sum2 = 0
     sum_tmp = 0
     for car_id in range(1, lm.car_max):  # 車両IDが0の車は除く
         for time in range(time_max):
-            check_car = vehlog.get(time, car_id)
-            if check_car is not None:
-                if check_car.lane == 0:
+            check_veh = vehlog.get(time, car_id)
+            if check_veh is not None:
+                if check_veh.lane == 0:
                     time_tmp += 1  # 加速車線を走った時間を記録している
-                elif check_car.lane == 1 or check_car.lane == 2:
+                elif check_veh.lane == 1 or check_veh.lane == 2:
                     break  # 走行車線を走った場合はそれ以上調べる必要はない
-                elif check_car.lane == 3:
+                elif check_veh.lane == 3:
                     break  # 追越車線を走った場合はそれ以上調べる必要はない
         # 加速車線を走っていた時間が0秒より長く、最後の時間の車線が加速車線でないとき、合流できた車両とみなす
-        if time_tmp > 0 and check_car is not None and check_car.lane != 0:
-            if time >= 3000:
+        if time_tmp > 0 and check_veh is not None and check_veh.lane != 0:
+            if lc_time >= 300:
                 sum1 += (time_tmp - ave_time) ** 2
-                sum2 += (check_car.front - ave_length) ** 2
+                sum2 += (check_veh.front - ave_length) ** 2
                 sum_tmp += 1
-            row_tmp += 1
         time_tmp = 0
     if sum_tmp != 0:
-        ws.cell(row=row_tmp + 3, column=1).value = "300秒以降の車両の時間平均値の標準偏差"
-        ws.cell(row=row_tmp + 3, column=2).value = (sum1 / sum_tmp) ** 0.5
-        ws.cell(row=row_tmp + 4, column=1).value = "300秒以降の車両の距離平均値の標準偏差"
-        ws.cell(row=row_tmp + 4, column=2).value = (sum2 / sum_tmp) ** 0.5
+        data_ls = [["300秒以降の車両の時間平均値の標準偏差", "300秒以降の車両の距離平均値の標準偏差"],
+                   [(sum1 / sum_tmp) ** 0.5, (sum2 / sum_tmp) ** 0.5]]
+        write_list(ws=ws, written_data=data_ls, row=row)
 
 
 def colorBarRGB(car_id):  # 可視化するのに使う関数
@@ -312,7 +283,7 @@ def create_visual_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max)
     fill = PatternFill(patternType='solid', fgColor='FF0000')
 
     veh_side = Side(style="thin", color="000000")
-    setting_dict = {"top_border": Border(top=veh_side, right=veh_side, left=veh_side),
+    setting_dict = {"top_border"   : Border(top=veh_side, right=veh_side, left=veh_side),
                     "bottom_border": Border(bottom=veh_side, right=veh_side, left=veh_side),
                     "middle_border": Border(right=veh_side, left=veh_side)
                     }
@@ -363,13 +334,13 @@ def create_log_sheet(wb: Workbook, vehlog: Vehlog, time_max):
             # col = abc_from_number(vehicle.lane + 1 + 4 * time)
             # ws.cell(row=row, column=2).hyperlink = "#可視化!" + str(col) + str(int(vehicle.front))
             data_ls = [time, vehicle.veh_id, vehicle.front, vehicle.lane, vehicle.type, vehicle.accel,
-                       vehicle.vel_h, vehicle.vd_h, vehicle.vdcl_h, vehicle.distance,
-                       vehicle.desired_distance, vehicle.delta_v, vehicle.tau,
+                       round(vehicle.vel_h, 2), round(vehicle.vd_h, 2), round(vehicle.vdcl_h, 2), vehicle.distance,
+                       vehicle.desired_distance, round(vehicle.delta_v, 2), vehicle.tau,
                        vehicle.front_car_id, vehicle.back_car_id, vehicle.target_car_id, vehicle.shift_front_veh_id,
                        vehicle.shift_lane, vehicle.shift_lane_to, vehicle.shift_begin_time,
                        vehicle.shift_distance_go, vehicle.mode, vehicle.ego]
 
-            row = write_list(ws=ws, writtendata=data_ls, column=1, row=row)
+            row = write_list(ws=ws, written_data=data_ls, column=1, row=row)
     ws.auto_filter.ref = get_column_letter(1) + str(1) + ':' + get_column_letter(ws.max_column) + str(ws.max_row)
 
 
@@ -556,7 +527,7 @@ def lane_penetration_log(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max
             datas.append(data_ls)
 
     table.append(datas)
-    write_list(ws=ws, writtendata=table, column=1, row=1)
+    write_list(ws=ws, written_data=table, column=1, row=1)
 
     # 平均値等を求める
     category2 = [None, "合流", "第一走行", "第二走行", "追い越し"]
@@ -565,19 +536,19 @@ def lane_penetration_log(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max
 
     avg_ls = ["平均値"] + np.nanmean(data_arr[:, 1:], axis=0).tolist()
     std_ls = ["標準偏差"] + np.nanstd(data_arr[:, 1:], axis=0).tolist()
-    write_list(ws=ws, writtendata=[category2, avg_ls, std_ls], column=len(category) + 2, row=1)
+    write_list(ws=ws, written_data=[category2, avg_ls, std_ls], column=len(category) + 2, row=1)
 
 
 def tracking_log(wb: Workbook, vehlog: Vehlog, id_list: List[int], time_max: int, sheet_title="スペースダイアグラム"):
     ws = wb.create_sheet(sheet_title)
     row = 1
     title = ["time", "id", "front", "vel"]
-    row = write_list(ws=ws, writtendata=title, column=1, row=row)
+    row = write_list(ws=ws, written_data=title, column=1, row=row)
     for time in range(0, time_max):
         for veh_id in id_list:
             veh_data = vehlog.get(time, veh_id)
             if veh_data is not None:
-                row = write_list(ws=ws, writtendata=[time, veh_data.veh_id, veh_data.front, veh_data.vel_h], column=1,
+                row = write_list(ws=ws, written_data=[time, veh_data.veh_id, veh_data.front, veh_data.vel_h], column=1,
                                  row=row)
 
     pass
@@ -588,7 +559,7 @@ def create_avg_vel_log(wb: Workbook, vehlog: Vehlog, id_ls=None, sheet_title="�
     column_title = ["id", "平均速度"]
     vel_dict: Dict[int, np.ndarray] = {}
     row = 1
-    row = write_list(ws=ws, writtendata=column_title, row=row, column=1)
+    row = write_list(ws=ws, written_data=column_title, row=row, column=1)
     for time_log in vehlog.log:
         for vehicle in time_log.values():
             if id_ls is None or vehicle.veh_id in id_ls:
@@ -598,7 +569,7 @@ def create_avg_vel_log(wb: Workbook, vehlog: Vehlog, id_ls=None, sheet_title="�
                     vel_dict[vehicle.veh_id] = np.append(vel_dict[vehicle.veh_id], vehicle.vel_h)
 
     for veh_id in vel_dict.keys():
-        row = write_list(ws=ws, writtendata=[veh_id, vel_dict[veh_id].mean()], row=row, column=1)
+        row = write_list(ws=ws, written_data=[veh_id, vel_dict[veh_id].mean()], row=row, column=1)
 
     '''
 def deceleration_log_sheet(wb: Workbook, ws: Worksheet, vehlog: List[List[Vehicle]], car_max, 

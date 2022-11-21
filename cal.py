@@ -10,7 +10,7 @@ def simulation(
         penetration,  # 普及率
         ego,  # ego車両割合
         seed: int,  # シード値
-        dir_name,  # ディレクトリ名
+        dir_path,  # ディレクトリ名
         interval,  # logの保存間隔
         controller,
         second_ctrl_ls,
@@ -28,5 +28,6 @@ def simulation(
 
     road.simulation()
 
-    road.save(controller=road.controller, seed=seed, dir_name=dir_name)
+    road.save(controller=road.controller, seed=seed, dir_path=dir_path)
+    print()
     return road.second_ctrl_ls

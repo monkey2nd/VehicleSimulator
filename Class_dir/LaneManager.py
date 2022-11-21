@@ -91,7 +91,7 @@ class LaneManager:
     def return_rand_frequency(self, frequency) -> int:
         return int(frequency * round(self.random.uniform(-0.5, 0.5), 2))
 
-    def get_lcvd(self, min_vel=3, max_vel=10):
+    def get_lcvd(self, min_vel=3, max_vel=7):
         return round(self.random.uniform(min_vel / 3.6, max_vel / 3.6), 2)
 
     def make_car_timetable(self) -> None:
@@ -153,6 +153,10 @@ class LaneManager:
                 v_measure = min(front_car.vel, veh.vd)
 
         # ? 各値更新
+        if veh.type == 0:
+            veh_info.merging_interval = self.random.randint(30, 40)
+        elif veh.type == 1:
+            veh_info.merging_interval = self.random.randint(20, 30)
         veh_info.max_accel = round(self.random.uniform(0.55, 0.75), 2)
         # self.desired_Deceleration = round(random.uniform(0.5, 1), 2)
         veh_info.desired_deceleration = round(self.random.uniform(0.5, 1.5), 2)
@@ -200,7 +204,8 @@ class LaneManager:
         if vehicle.type == 0:
             if vehicle.ego == 0:
                 if lane == 0:
-                    vd = self.make_vd(min_vel=86, max_vel=95)
+                    # vd = self.make_vd(min_vel=86, max_vel=95)
+                    vd = self.make_vd(min_vel=80, max_vel=90)
                 elif lane == 1:
                     vd = self.make_vd(min_vel=91, max_vel=100)
                 elif lane == 2:
@@ -265,8 +270,10 @@ class LaneManager:
                     self.second_control_car_ls.remove(check_car)
                 del check_car
         """
-            if check_car.shift_begin_time + 40 == time and check_car.lane == 0 and self.search_car(vehlog=vehlog, time=time - 1, Id=check_car.Id).shift_lane == 1:
-                if check_car.vel < 40 / 3.6 or self.search_car(vehlog=vehlog, time=time - 40, Id=check_car.Id).vel_h - check_car.vel_h > 10:
+            if check_car.shift_begin_time + 40 == time and check_car.lane == 0 and self.search_car(vehlog=vehlog, 
+            time=time - 1, Id=check_car.Id).shift_lane == 1:
+                if check_car.vel < 40 / 3.6 or self.search_car(vehlog=vehlog, time=time - 40, Id=check_car.Id).vel_h 
+                - check_car.vel_h > 10:
                     self.run_vehicle_ls.remove(check_car)
                     check_car.lane = -1
 

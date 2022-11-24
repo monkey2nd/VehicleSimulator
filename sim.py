@@ -19,25 +19,6 @@ def sim(car_max, merging_ratio, penetration, ego, seed, dir_path, q_lane0, inter
 
 
 if __name__ == "__main__":
-    now = datetime.now()
-    # ? 保存するディレクトリ名
-    tmp_dir_name = input("フォルダ名を指定する：")
-    dir_path = Path().cwd() / "Data_dir"
-    if not tmp_dir_name == "":
-        dir_path /= tmp_dir_name
-    else:
-        dir_path /= str(now.month).zfill(2) + str(now.day).zfill(2) + "_" + str(now.hour).zfill(2) \
-                    + str(now.minute).zfill(2) + str(now.second).zfill(2)
-
-    # car_max_ls = [600, 650, 550]  # ? 本線車両数
-    # penetration_ls = [0.3, 0.5, 0.7]  # ? 本線の自動運転車両割合(0~1)（0にすると手動運転車両のみになる）
-    # merging_ratio_ls = [40, 60]  # ? 合流車両の自動運転車両割合(0~1)
-    # seed_ls = [1, 11]  # ? シード値
-
-    # **TESTZORN
-    # car_max_ls = range(450, 550 + 1, 50)
-    # car_max_ls = range(500, 601, 50)
-    # car_max_ls = [750]
     # todo lc制御無しのほうが結果が良くなってしまっている訳を可視化で確認(10%において結果が出すぎている）
     # todo 合流車両に対して各制御方式においてどの程度自動運転車両が対応しているか
 
@@ -46,20 +27,19 @@ if __name__ == "__main__":
     # todo 合流部においてmanual:(3-4),auto(2-3)
     # todo 合流制御(I:\マイドライブ\研究\最新版2\Data_dir\1119_235749\普及率30.0%\車両数700_80\lc_controlあり\seed0.xlsx)の318
     # todo などの様なパターンを修正，合流車両，本線車両の速度加速度より車間距離計算を行いmode3に割り当てる
+    # todo 合流車線を走行する車両の減速は消してもいいかも
 
-    veh_max_ls = [650, 700]
-    # veh_max_ls = [700]
-
-    penetration_ls = [0, 0.1, 0.3]
+    # veh_max_ls = [650, 700]
     # penetration_ls = [0, 0.05, 0.1, 0.2, 0.3]
+    # merging_ratio_ls = [0.5]  # ** 合流車両の普及率(0-1)
+    # seed_ls = range(10)
+    # q_lane0_ls = [50, 80]
 
-    merging_ratio_ls = [0.5]  # ** 合流車両の普及率(0-1)
-
+    veh_max_ls = [700]
+    penetration_ls = [0, 0.2, 0.3]
+    merging_ratio_ls = [0.5]
     seed_ls = range(5)
-    # seed_ls = range(5)
-    # seed_ls = [1]
-    q_lane0_ls = [50, 80]
-
+    q_lane0_ls = [50, 60, 70]
     ego_ls = [0]
     # penetration==0用のcfg
     default_cfg = {"speed_control": False, "distance_control": False, "lc_control": False, "merging_control": False}
@@ -69,21 +49,28 @@ if __name__ == "__main__":
     sim_time = 1  # ? シミュレーションを行っている回数
 
     sim_time_max = 0
-
     sim_time_max += len(veh_max_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(ego_ls) \
                     * len([_ for _ in penetration_ls if _ != 0]) * len(controller_cfgs)
     if 0 in penetration_ls:
         sim_time_max += len(veh_max_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(ego_ls)
-
-    interval_log = 10  # (0.1s)
+    print("シミュレーション予定回数：", sim_time_max)
+    now = datetime.now()
+    # ? 保存するディレクトリ名
+    tmp_dir_name = input("フォルダ名を指定する：")
+    dir_path = Path().cwd() / "Data_dir"
+    if not tmp_dir_name == "":
+        dir_path /= tmp_dir_name
+    else:
+        dir_path /= str(now.month).zfill(2) + str(now.day).zfill(2) + "_" + str(now.hour).zfill(2) \
+                    + str(now.minute).zfill(2) + str(now.second).zfill(2)
+    interval_log = 10
     lc_memo = LaneChangeMemo()
-
-    for veh_max in veh_max_ls:
-        for penetration in penetration_ls:
-            for merging_ratio in merging_ratio_ls:
-                for ego in ego_ls:
-                    for seed in seed_ls:
-                        for q_lane0 in q_lane0_ls:
+    for merging_ratio in merging_ratio_ls:
+        for q_lane0 in q_lane0_ls:
+            for veh_max in veh_max_ls:
+                for penetration in penetration_ls:
+                    for ego in ego_ls:
+                        for seed in seed_ls:
                             if penetration == 0:
                                 controller = Controller(**default_cfg)
                                 print("実行中... " + str(sim_time) + "/" + str(sim_time_max))

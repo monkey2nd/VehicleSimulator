@@ -239,8 +239,8 @@ class Vehicle:
     def update_car(self, time) -> None:
         run_car_info = self.info
         self.canonicalize()
-        self.vel = round(max(0.0, self.vel + self.accel / 10), 2)
-        self.front = round(self.front + self.vel / 10, 2)
+        self.vel = round(max(0.0, self.vel + self.accel / 10), 3)
+        self.front = round(self.front + self.vel / 10, 4)
         self.accel = round(self.accel, 2)
 
         if self.shift_lane is True:
@@ -281,7 +281,7 @@ class VehicleInfo:
         self.occur_time = 0  # 9車両発生時刻
         self.mode = 0  # ? 現在の状態を表す変数(0:通常走行中,2:車線変更中,3加速制御,4:減速制御,5:減速軽減)
         self.shift_time = 0  # ? 15 手動運転車両が車線変更する時間
-        self.shift_interval = 2  # 本線車線変更インターバル
+        self.shift_interval = 20  # 本線車線変更インターバル
         self.merging_interval = 0  # 合流時車線変更インターバル
         self.min_vel = 0
         self.vdcl = 0  # ? vel diff to change lanes 車線変更を行う希望速度と走行速度の速度差

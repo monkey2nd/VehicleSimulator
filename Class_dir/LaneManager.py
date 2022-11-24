@@ -28,10 +28,11 @@ class LaneManager:
         self.merging_ratio = merging_ratio
         self.ego_ratio = ego_ratio
         self.lane_ratio = [0.3, 0.3, 0.4]  # ? 各車線の車両交通量
+        # self.lane_ratio = [0.3, 0.3, 0.4]  # ? 各車線の車両交通量
 
-        self.acceleration_lane_start = 1200  # ? 加速車線開始位置
-        self.acceleration_lane_end = self.acceleration_lane_start + 300  # ? 加速車線終了位置
-        self.road_length = self.acceleration_lane_end + 400  # ? 道路の長さ
+        self.ms_start = 1200  # ? 加速車線開始位置
+        self.ms_end = self.ms_start + 300  # ? 加速車線終了位置
+        self.road_length = self.ms_end + 400  # ? 道路の長さ
 
         # self.vel_sensor_area = 10  # ? 合流車線を走る普通車両の速度検出を行うvel_sensorの検知範囲
         self.vel_sensor_point = 1100  # ? 通信開始位置
@@ -91,7 +92,7 @@ class LaneManager:
     def return_rand_frequency(self, frequency) -> int:
         return int(frequency * round(self.random.uniform(-0.5, 0.5), 2))
 
-    def get_lcvd(self, min_vel=3, max_vel=7):
+    def get_lcvd(self, min_vel=5, max_vel=10):
         return round(self.random.uniform(min_vel / 3.6, max_vel / 3.6), 2)
 
     def make_car_timetable(self) -> None:
@@ -204,8 +205,9 @@ class LaneManager:
         if vehicle.type == 0:
             if vehicle.ego == 0:
                 if lane == 0:
-                    # vd = self.make_vd(min_vel=86, max_vel=95)
-                    vd = self.make_vd(min_vel=80, max_vel=90)
+                    vd = self.make_vd(min_vel=85, max_vel=95)
+                    # vd = self.make_vd(min_vel=80, max_vel=90)
+                    # todo ここを変えると大きく変化
                 elif lane == 1:
                     vd = self.make_vd(min_vel=91, max_vel=100)
                 elif lane == 2:
@@ -291,7 +293,7 @@ class LaneManager:
             for index_, check_car in enumerate(lane_car_ls):
                 if index_ == 0:
                     if check_car.lane == 0:
-                        check_car.distance = self.acceleration_lane_end - check_car.front
+                        check_car.distance = self.ms_end - check_car.front
                     else:
                         check_car.distance = float('infinity')
 
@@ -299,19 +301,19 @@ class LaneManager:
                         check_car.back_veh = lane_car_ls[index_ + 1]
 
                     check_car.front_veh = None
-                    check_car.set_delta_v(acceleration_lane_end=self.acceleration_lane_end)
+                    check_car.set_delta_v(acceleration_lane_end=self.ms_end)
 
                 elif index_ == len(lane_car_ls) - 1:
                     check_car.front_veh = lane_car_ls[index_ - 1]
                     check_car.back_veh = None
                     check_car.set_distance()
-                    check_car.set_delta_v(acceleration_lane_end=self.acceleration_lane_end)
+                    check_car.set_delta_v(acceleration_lane_end=self.ms_end)
 
                 else:
                     check_car.front_veh = lane_car_ls[index_ - 1]
                     check_car.back_veh = lane_car_ls[index_ + 1]
                     check_car.set_distance()
-                    check_car.set_delta_v(acceleration_lane_end=self.acceleration_lane_end)
+                    check_car.set_delta_v(acceleration_lane_end=self.ms_end)
 
                     """
                     elif self.use_base_station == 1:

@@ -35,6 +35,7 @@ def write_list(ws: Worksheet, written_data, column=1, row=1):
 
 
 def create_path(controller: Controller, lm: LaneManager, seed, dir_path: Path):
+    use_lc_filename = ""
     f_path = dir_path \
              / ("普及率" + (str(lm.penetration * 100) + "%")) \
              / ("車両数" + str(sum(lm.q_lane_ls[1:])) + "_" + str(lm.q_lane_ls[0]))
@@ -42,10 +43,11 @@ def create_path(controller: Controller, lm: LaneManager, seed, dir_path: Path):
     if controller.use_control:
         if controller.lc_control is True:
             f_path /= "lc_controlあり"
+            use_lc_filename = "use_lc"
         else:
             f_path /= "lc_control無し"
 
-    f_path /= ("seed" + str(seed) + ".xlsx")
+    f_path /= ("seed" + str(seed) + "_penetration" + str(int(lm.penetration * 100)) + use_lc_filename + ".xlsx")
 
     return f_path
 
@@ -64,11 +66,11 @@ def create_info_sheet(wb: Workbook, lm: LaneManager, time_max):
         ["第一走行交通量", lm.get_q(1)],
         ["第二走行交通量", lm.get_q(2)],
         ["追い越し交通量", lm.get_q(3)],
-        ["加速車線開始[m]", lm.acceleration_lane_start],
-        ["加速車線終了[m]", lm.acceleration_lane_end],
+        ["加速車線開始[m]", lm.ms_start],
+        ["加速車線終了[m]", lm.ms_end],
         ["基地局", lm.controller.use_control],
         ["合流車両の割合", lm.merging_ratio]
-    ]
+        ]
     write_list(ws=ws, written_data=data)
 
 
@@ -127,13 +129,13 @@ def create_lane_vel_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_ma
     lane2_id_list = check_veh_lane(vehlog, 2)  # 第二走行車線を走行した車両のIDを調べる
     lane3_id_list = check_veh_lane(vehlog, 3)  # 追越車線を走行した車両のIDを調べる
     ws = wb.create_sheet(title="加速速度")  # シート名を指定
-    save4_write0(ws, vehlog, time_max, 0, lane0_id_list, lm.acceleration_lane_start, lm.acceleration_lane_end)
+    save4_write0(ws, vehlog, time_max, 0, lane0_id_list, lm.ms_start, lm.ms_end)
     ws = wb.create_sheet(title="第一走行速度")  # シート名を指定
-    save4_write0(ws, vehlog, time_max, 1, lane1_id_list, lm.acceleration_lane_start, lm.acceleration_lane_end)
+    save4_write0(ws, vehlog, time_max, 1, lane1_id_list, lm.ms_start, lm.ms_end)
     ws = wb.create_sheet(title="第二走行速度")  # シート名を指定
-    save4_write0(ws, vehlog, time_max, 2, lane2_id_list, lm.acceleration_lane_start, lm.acceleration_lane_end)
+    save4_write0(ws, vehlog, time_max, 2, lane2_id_list, lm.ms_start, lm.ms_end)
     ws = wb.create_sheet(title="追越速度")  # シート名を指定
-    save4_write0(ws, vehlog, time_max, 3, lane3_id_list, lm.acceleration_lane_start, lm.acceleration_lane_end)
+    save4_write0(ws, vehlog, time_max, 3, lane3_id_list, lm.ms_start, lm.ms_end)
 
 
 def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm: LaneManager, time_max):
@@ -155,7 +157,7 @@ def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm:
         for time in range(time_max):
             check_veh = vehlog.get(time, veh_id)
             if check_veh is not None:
-                if lm.acceleration_lane_start < check_veh.back:
+                if lm.ms_start < check_veh.back:
                     if check_veh.lane == 0:
                         time_tmp += 1  # 合流区間を走った時間を記録している
                         check_veh_old = check_veh
@@ -168,7 +170,7 @@ def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm:
         if time_tmp > 0 and check_veh is not None and check_veh.lane != 0:
             data_ls = [veh_id, check_veh.type, lc_time, time_tmp, check_veh.front, check_veh_old.app_car_id,
                        dc.get_cd(id=check_veh.veh_id).cep, dc.get_cd(id=check_veh.veh_id).csp, check_veh.vd_h]
-            if lm.acceleration_lane_end - 50 < check_veh.front:  # 950m以降の車線変更ではセル色を変える
+            if lm.ms_end - 50 < check_veh.front:  # 950m以降の車線変更ではセル色を変える
                 ws.cell(row=row, column=5).fill = fill
             for k in range(0, 5):
                 data_ls.append(vehlog.get(lc_time - k, veh_id).vel_h)  # 4秒前までの合流時車両速度
@@ -184,7 +186,7 @@ def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm:
         ave_time = sum1 / sum_tmp
         ave_length = sum2 / sum_tmp
         data_ls = [["300秒以降の車両の時間平均値", "300秒以降の車両の距離平均値"],
-                   [ave_time / 10, ave_length - lm.acceleration_lane_start]]
+                   [ave_time / 10, ave_length - lm.ms_start]]
         row = write_list(ws=ws, written_data=data_ls, row=row)
     time_tmp = 0
     sum1 = 0
@@ -283,7 +285,7 @@ def create_visual_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max)
     fill = PatternFill(patternType='solid', fgColor='FF0000')
 
     veh_side = Side(style="thin", color="000000")
-    setting_dict = {"top_border"   : Border(top=veh_side, right=veh_side, left=veh_side),
+    setting_dict = {"top_border": Border(top=veh_side, right=veh_side, left=veh_side),
                     "bottom_border": Border(bottom=veh_side, right=veh_side, left=veh_side),
                     "middle_border": Border(right=veh_side, left=veh_side)
                     }
@@ -328,7 +330,7 @@ def create_log_sheet(wb: Workbook, vehlog: Vehlog, time_max):
         ws.cell(row=row, column=col_tmp).value = list_tmp
     row = 2
     ws.freeze_panes = 'A2'  # 先頭行固定
-    for time in range(0, time_max):
+    for time in tqdm(range(0, time_max), desc="save_log"):
         for vehicle in vehlog.get_logvalues(time):  # ID0は除外,車の台数分ループ
             ws.cell(row=row, column=1).value = (time / 10)  # 最も左の列の時間の部分
             # col = abc_from_number(vehicle.lane + 1 + 4 * time)
@@ -439,19 +441,6 @@ def moving_avg_sheet(wb: Workbook, car: List[List[Vehicle]]):
                 ws.cell(row=time + 1 - 1,
                         column=lane + 2).value = car_vel / car_num if not car_num == 0 else None
 
-        # # *** 以下グラフ作成(失敗作)
-        # chart = LineChart()
-        # chart.title = "車両数" + str(car_max) + "_合流" + str(q_lane0)
-        # chart.y_axis.title = "移動平均速度"
-        # chart.x_axis.title = "時間（s）"
-
-        # values = Reference(ws, min_col=2, min_row=1, max_col=5, max_row=600)
-        # chart.add_data(values, titles_from_data=True)
-
-        # values = Reference(ws, min_col=1, min_row=1, max_col=1, max_row=592)
-        # chart.set_categories(values)
-
-        # ws.add_chart(chart, "G2")
     return ws
 
 
@@ -513,7 +502,7 @@ def lane_penetration_log(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max
             data_ls_tmp2 = [0 for _ in range(len(category) - 1)]  # 各車線の合計車両数
 
             for check_car in vehlog.get_logvalues(time):
-                if check_car.front < lm.acceleration_lane_start:
+                if check_car.front < lm.ms_start:
                     if check_car.type == 1:
                         data_ls_tmp[check_car.lane] += 1
                     data_ls_tmp2[check_car.lane] += 1

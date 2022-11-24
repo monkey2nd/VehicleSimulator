@@ -289,6 +289,7 @@ class Road:
         veh.accel = min_accel.accel
         veh.target_veh = min_accel.target_veh
         veh.desired_distance = min_accel.desired_dis
+        veh.accel_name = min_accel.name
 
     def check_flag(self, veh: Vehicle) -> bool:
         """

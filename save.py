@@ -322,9 +322,9 @@ def create_log_sheet(wb: Workbook, vehlog: Vehlog, time_max):
     ws: Worksheet = wb.create_sheet(title="log_sheet")
     row = 1
 
-    list_ = ["時間", "Id", "前方位置", "車線", "車両タイプ", "加速度", "速度", "希望速度", "車線変更閾値", "車間",
-             "希望車間距離", "相対速度", "希望車頭時間", "前方車両ID", "後方車両ID", "目標車両ID", "前方車線変更車両",
-             "車線変更途中", "車線変更先", "車線変更開始時間", "車線変更先車間距離", "mode", "ego"]
+    list_ = ["時間", "Id", "前方位置", "車線", "車両タイプ", "加速度", "加速理由", "速度", "希望速度", "車線変更閾値",
+             "車間", "希望車間距離", "相対速度", "希望車頭時間", "前方車両ID", "後方車両ID", "目標車両ID",
+             "前方車線変更車両", "車線変更途中", "車線変更先", "車線変更開始時間", "車線変更先車間距離", "mode", "ego"]
 
     for col_tmp, list_tmp in enumerate(list_, 1):  # 1行目の文字の部分の書き込み col_tmpは1からスタートする
         ws.cell(row=row, column=col_tmp).value = list_tmp
@@ -336,8 +336,8 @@ def create_log_sheet(wb: Workbook, vehlog: Vehlog, time_max):
             # col = abc_from_number(vehicle.lane + 1 + 4 * time)
             # ws.cell(row=row, column=2).hyperlink = "#可視化!" + str(col) + str(int(vehicle.front))
             data_ls = [time, vehicle.veh_id, vehicle.front, vehicle.lane, vehicle.type, vehicle.accel,
-                       round(vehicle.vel_h, 2), round(vehicle.vd_h, 2), round(vehicle.vdcl_h, 2), vehicle.distance,
-                       vehicle.desired_distance, round(vehicle.delta_v, 2), vehicle.tau,
+                       vehicle.accel_name, round(vehicle.vel_h, 2), round(vehicle.vd_h, 2), round(vehicle.vdcl_h, 2),
+                       vehicle.distance, vehicle.desired_distance, round(vehicle.delta_v, 2), vehicle.tau,
                        vehicle.front_car_id, vehicle.back_car_id, vehicle.target_car_id, vehicle.shift_front_veh_id,
                        vehicle.shift_lane, vehicle.shift_lane_to, vehicle.shift_begin_time,
                        vehicle.shift_distance_go, vehicle.mode, vehicle.ego]

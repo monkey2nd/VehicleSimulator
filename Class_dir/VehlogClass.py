@@ -12,6 +12,7 @@ class Vehtpl(NamedTuple):
     vel: float
     vd: float
     accel: float
+    accel_name: str
     vdcl: float
     distance: float
     desired_distance: float
@@ -55,6 +56,7 @@ class Vehtpl(NamedTuple):
 def make_vehtpl(veh_cls: Vehicle):
     return Vehtpl(veh_cls.veh_id, veh_cls.front, veh_cls.lane, veh_cls.vel, round(veh_cls.vd, 2),
                   round(veh_cls.accel, 2),
+                  veh_cls.accel_name,
                   round(veh_cls.info.vdcl, 2),
                   round(veh_cls.distance, 1),
                   veh_cls.desired_distance, round(veh_cls.delta_v_h, 2), veh_cls.tau,

@@ -14,6 +14,7 @@ class Vehicle:
         self.vel: float = 0  # 3速度代入
         self.__vd: float = 0
         self.accel = 0  # 4加速度代入
+        self.accel_name: str = ""  # accelの数値の理由
         self.distance = 0  # 5車間距離代入
         self.desired_distance = 0
         self.delta_v = 0  # 6相対速度

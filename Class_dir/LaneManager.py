@@ -252,6 +252,7 @@ class LaneManager:
                         # self.vd = vd_make(min_vel=86, max_vel=95)
                     elif lane == 1:
                         vd = self.make_vd(min_vel=91, max_vel=100)
+                        # vd = round(110 / 3.6, 2)
                     elif lane == 2:
                         vd = self.make_vd(min_vel=101, max_vel=110)
                     elif lane == 3:

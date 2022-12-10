@@ -36,10 +36,10 @@ if __name__ == "__main__":
     # q_lane0_ls = [50, 80]
 
     veh_max_ls = [700]
-    penetration_ls = [0, 0.2, 0.3]
+    penetration_ls = [0, 0.1, 0.2, 0.3]
     merging_ratio_ls = [0.5]
-    seed_ls = range(5)
-    q_lane0_ls = [50, 60, 70]
+    seed_ls = range(10)
+    q_lane0_ls = [50]
     ego_ls = [0]
     # penetration==0用のcfg
     default_cfg = {"speed_control": False, "distance_control": False, "lc_control": False, "merging_control": False}

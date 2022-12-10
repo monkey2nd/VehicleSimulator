@@ -23,7 +23,7 @@ class Vehicle:
         self.back_veh: Vehicle | None = None  # 8 後方車両
         self.target_veh: Vehicle | None = None  # 9 目標車両
         self.app_veh: Vehicle | None = None  # 10 基地局を用いたときに通信を行う合流車両クラス
-        self.apped_veh: Vehicle | None = None  # 11 基地局を用いたときに通信を行う譲る車両クラス
+        self.apped_veh: Vehicle | None = None  # 11 基地局simを用いたときに通信を行う譲る車両クラス
         self.shift_front_veh: Vehicle | None = None  # 自社の目の前に車線変更してくる車両クラス
         self.shift_lane: bool = False  # 10 車線変更してる途中かどうか
         self.shift_lane_to = 0  # 11 どこの車線に変更しようとしてるか
@@ -107,11 +107,12 @@ class Vehicle:
     def make_vd(min_vel, max_vel):
         return round(random.uniform(min_vel / 3.6, max_vel / 3.6), 2)
 
-    def change_vd(self, controller: Controller, lane, extra_code=0):
+    def change_vd(self, controller: Controller, lane=None, direction: int = 0, extra_code=0):
         """
         車両生成時以外でvdを変化する関数
         """
-        vd = 0
+        if lane is None and direction != 0:
+            lane = self.lane + direction
         if self.type == 0:
             if self.ego == 0:
                 if lane == 0:
@@ -160,6 +161,7 @@ class Vehicle:
                         # self.vd = make_vd(min_vel=86, max_vel=95)
                     elif lane == 1:
                         vd = self.make_vd(min_vel=91, max_vel=100)
+                        # vd = round(110 / 3.6, 2)
                     elif lane == 2:
                         vd = self.make_vd(min_vel=101, max_vel=110)
                     elif lane == 3:
@@ -171,7 +173,8 @@ class Vehicle:
     def set_delta_v(self, acceleration_lane_end) -> None:
         # * front_carの存在を加味し適切なdelta_vを格納する関数
         if self.front_veh is None:
-            if self.lane == 0 and (((self.vel ** 2) / 3.8) / 2 + 5 > (acceleration_lane_end - self.front)):
+            if self.lane == 0 and (
+                    ((self.vel ** 2) / self.info.max_deceleration) / 2 + 5 > (acceleration_lane_end - self.front)):
                 self.delta_v = self.vel
             else:
                 self.delta_v = 0
@@ -193,8 +196,11 @@ class Vehicle:
         a = run_car_info.max_accel
         b = run_car_info.desired_deceleration
         # ? s0:停止時最小車間距離　v:車両速度　t:安全車頭時間　treac:反応時間　delta_v:相対速度　a,最大加速度　b,希望減速度
+        ss = round(s0 + v * (t + treac) + ((v * delta_v) / (((a * b) ** 0.5) * 2)), 1)
+        if delta_v * 3.6 <= -5:
+            ss = 0
 
-        return round(s0 + v * (t + treac) + ((v * delta_v) / (((a * b) ** 0.5) * 2)), 1)
+        return ss
 
     def calculate_accel(self, desired_vehicle_distance=None, target_car: 'Vehicle' = None) -> float:
         """

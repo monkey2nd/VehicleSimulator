@@ -50,7 +50,7 @@ def make_result(dir_path: Path, penetration_ls, car_max_ls, seed_ls, merging_ls,
             get_table2(ws=ws, data_set=data_set, penetration_ls=penetration_ls, car_max_ls=car_max_ls,
                        col_title_ls=col_title_ls)
 
-    print(str(dir_path) + "/" + wb_name + "を保存中...")
+    print(str(dir_path) + "/" + wb_name + " を保存中...")
     wb.save(str(dir_path) + "/" + wb_name)
     wb.close()
 

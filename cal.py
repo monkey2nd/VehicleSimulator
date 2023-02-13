@@ -15,12 +15,12 @@ def simulation(
         controller,
         second_ctrl_ls,
         time_max=600,  # シミュレーション時間
-):
+        ):
     # ** 初期宣言部分開始
     print("パラメータを初期化中")
     random.seed(seed)  # ! 必ず一番上に記載しておくこと
     road = Road(time_max=time_max, interval=interval, controller=controller, second_ctrl_ls=second_ctrl_ls)
-    road.lm_init(car_max=veh_max, q_lane0=q_lane0, merging_ratio=merging_ratio, penetration=penetration, ego=ego,
+    road.lm_init(veh_max=veh_max, q_lane0=q_lane0, merging_ratio=merging_ratio, penetration=penetration, ego=ego,
                  seed=seed)
     road.car_init()
     road.change_time_max()

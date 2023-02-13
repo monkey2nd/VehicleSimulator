@@ -35,13 +35,15 @@ def write_list(ws: Worksheet, written_data, column=1, row=1):
 
 
 def create_path(controller: Controller, lm: LaneManager, seed, dir_path: Path):
+    """
+    保存先ファイル名を生成する関数
+    """
     use_lc_filename = ""
-    f_path = dir_path \
-             / ("普及率" + (str(lm.penetration * 100) + "%")) \
-             / ("車両数" + str(sum(lm.q_lane_ls[1:])) + "_" + str(lm.q_lane_ls[0]))
+    f_path = dir_path / ("普及率" + (str(lm.penetration * 100) + "%")) / (
+            "車両数" + str(lm.q_main_lane) + "_" + str(lm.q_lane_ls[0]))
 
     if controller.use_control:
-        if controller.lc_control is True:
+        if controller.use_lc_control is True:
             f_path /= "lc_controlあり"
             use_lc_filename = "use_lc"
         else:
@@ -74,7 +76,7 @@ def create_info_sheet(wb: Workbook, lm: LaneManager, time_max):
     write_list(ws=ws, written_data=data)
 
 
-def check_veh_lane(vehlog: Vehlog, lane):
+def get_veh_lane(vehlog: Vehlog, lane):
     id_list = []
 
     for veh_time in vehlog.log:
@@ -124,10 +126,10 @@ def save4_write0(ws: Worksheet, vehlog: Vehlog, time_max, lane, lane_id_list, ac
 
 
 def create_lane_vel_sheet(wb: Workbook, vehlog: Vehlog, lm: LaneManager, time_max):
-    lane0_id_list = check_veh_lane(vehlog, 0)  # 加速車線を走行した車両のIDを調べる
-    lane1_id_list = check_veh_lane(vehlog, 1)  # 第一走行車線を走行した車両のIDを調べる
-    lane2_id_list = check_veh_lane(vehlog, 2)  # 第二走行車線を走行した車両のIDを調べる
-    lane3_id_list = check_veh_lane(vehlog, 3)  # 追越車線を走行した車両のIDを調べる
+    lane0_id_list = get_veh_lane(vehlog, 0)  # 加速車線を走行した車両のIDを調べる
+    lane1_id_list = get_veh_lane(vehlog, 1)  # 第一走行車線を走行した車両のIDを調べる
+    lane2_id_list = get_veh_lane(vehlog, 2)  # 第二走行車線を走行した車両のIDを調べる
+    lane3_id_list = get_veh_lane(vehlog, 3)  # 追越車線を走行した車両のIDを調べる
     ws = wb.create_sheet(title="加速速度")  # シート名を指定
     save4_write0(ws, vehlog, time_max, 0, lane0_id_list, lm.ms_start, lm.ms_end)
     ws = wb.create_sheet(title="第一走行速度")  # シート名を指定
@@ -153,7 +155,7 @@ def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm:
     # ##合流できた車両の合流までにかかった時間を調べる###
     check_veh_old = None
     check_veh = None
-    for veh_id in range(1, lm.car_max):  # 車両IDが0の車は除く
+    for veh_id in range(1, lm.get_veh_max):  # 車両IDが0の車は除く
         for time in range(time_max):
             check_veh = vehlog.get(time, veh_id)
             if check_veh is not None:
@@ -192,7 +194,7 @@ def create_merging_info_sheet(wb: Workbook, vehlog: Vehlog, dc: DataCollect, lm:
     sum1 = 0
     sum2 = 0
     sum_tmp = 0
-    for car_id in range(1, lm.car_max):  # 車両IDが0の車は除く
+    for car_id in range(1, lm.get_veh_max):  # 車両IDが0の車は除く
         for time in range(time_max):
             check_veh = vehlog.get(time, car_id)
             if check_veh is not None:
@@ -403,10 +405,10 @@ def time_avgvel_sheet(wb: Workbook, car: List[List[Vehicle]]):
             row -= 1
 
 
-def moving_avg_sheet(wb: Workbook, car: List[List[Vehicle]]):
-    time_max = 600 * 10
+def moving_avg_sheet(wb: Workbook, vehlog: Vehlog, time_max):
     ws = wb.create_sheet('移動平均速度')
     column_titles = ['時間', '合流車線', '第一走行車線', '第二走行車線', '追越車線']
+    row = 2
     lane_num = len(column_titles) - 1
     window = 10  # ? 移動平均の幅
     moving_avg = [[] for _ in range(lane_num)]  # ? [[[合計車両数、合計車両速度]×Window]×レーン数]
@@ -416,32 +418,33 @@ def moving_avg_sheet(wb: Workbook, car: List[List[Vehicle]]):
 
     ws.freeze_panes = 'A2'
 
-    for time in range(time_max + 1):  # ? 1秒毎でループ
-        lane_avgv = [[0, 0] for _ in range(lane_num)]  # ? [[合計車両数、合計車両速度],,,←レーン数]
-        for check_car in car[time]:
-            if check_car.lane == -1:
+    for time in range(time_max):  # ? 1秒毎でループ
+        lane_vel_avg = [[0, 0] for _ in range(lane_num)]  # ? [[合計車両数、合計車両速度],,,←レーン数]
+        for check_veh in vehlog.get_logvalues(time):
+            if check_veh.lane == -1:
                 continue
             else:
-                lane_avgv[check_car.lane][0] += 1
-                lane_avgv[check_car.lane][1] += check_car.vel_h
+                lane_vel_avg[check_veh.lane][0] += 1
+                lane_vel_avg[check_veh.lane][1] += check_veh.vel_h
 
         for lane in range(lane_num):
-            moving_avg[lane].append(lane_avgv[lane])
+            moving_avg[lane].append(lane_vel_avg[lane])
             if len(moving_avg[lane]) > window:
                 moving_avg[lane].pop(0)
 
-        if len(moving_avg[0]) >= window:
-            ws.cell(row=time + 1, column=1).value = time
+        if time >= window:
+            written_data = [time]
             for lane in range(lane_num):
-                car_num = 0
-                car_vel = 0
+                veh_num = 0
+                veh_vel = 0
                 for i in range(window):
-                    car_num += moving_avg[lane][i][0]
-                    car_vel += moving_avg[lane][i][1]
-                ws.cell(row=time + 1 - 1,
-                        column=lane + 2).value = car_vel / car_num if not car_num == 0 else None
-
-    return ws
+                    veh_num += moving_avg[lane][i][0]
+                    veh_vel += moving_avg[lane][i][1]
+                if veh_num == 0:
+                    written_data.append(-1)
+                else:
+                    written_data.append(veh_vel / veh_num)
+            row = write_list(ws=ws, written_data=written_data, row=row)
 
 
 def deceleration_log_sheet(wb: Workbook, dc: DataCollect, lm: LaneManager):
@@ -456,7 +459,7 @@ def deceleration_log_sheet(wb: Workbook, dc: DataCollect, lm: LaneManager):
 
     row = 2
 
-    for car_id in range(1, lm.car_max):
+    for car_id in range(1, lm.get_veh_max):
         if car_id not in lm.second_control_car_ls:
             ws.cell(row=row, column=1).value = car_id
             ws.cell(row=row, column=2).value = dc.dece_ls[car_id].v_init_h

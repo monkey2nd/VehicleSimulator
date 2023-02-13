@@ -18,7 +18,9 @@ class Vehicle:
         self.distance = 0  # 5車間距離代入
         self.desired_distance = 0
         self.delta_v = 0  # 6相対速度
-        self.tau = 1.0
+        self.tau = 1.0  # (現在の希望車頭時間，目標車頭時間，ステップごとの上昇量)
+        # self.tau = round(random.uniform(1.0, 1.4), 1)
+        # ばらつきを持たせることが大事　avg1.2 0.2幅
         self.front_veh: Vehicle | None = None  # 7 前方車両
         self.back_veh: Vehicle | None = None  # 8 後方車両
         self.target_veh: Vehicle | None = None  # 9 目標車両
@@ -116,7 +118,7 @@ class Vehicle:
         if self.type == 0:
             if self.ego == 0:
                 if lane == 0:
-                    vd = self.make_vd(min_vel=86, max_vel=95)
+                    vd = self.make_vd(min_vel=85, max_vel=95)
                 elif lane == 1:
                     vd = self.make_vd(min_vel=91, max_vel=100)
                 elif lane == 2:
@@ -131,7 +133,7 @@ class Vehicle:
                 elif lane == 2:
                     vd = self.make_vd(min_vel=101, max_vel=105)
                 elif lane == 3:
-                    vd = self.make_vd(min_vel=111, max_vel=115)
+                    vd = self.make_vd(min_vel=111, max_vel=120)
         elif self.type == 1:
             if controller.speed_control:
                 if extra_code == 0:
@@ -171,10 +173,14 @@ class Vehicle:
         self.set_vd(vd)
 
     def set_delta_v(self, acceleration_lane_end) -> None:
-        # * front_carの存在を加味し適切なdelta_vを格納する関数
+        """
+        front_carの存在を加味し適切なdelta_vを格納する関数
+        """
+
         if self.front_veh is None:
             if self.lane == 0 and (
-                    ((self.vel ** 2) / self.info.max_deceleration) / 2 + 5 > (acceleration_lane_end - self.front)):
+                    ((self.vel ** 2) / self.info.max_deceleration) / 2 + 5 > (
+                    acceleration_lane_end - self.front - self.info.dis_stop)):
                 self.delta_v = self.vel
             else:
                 self.delta_v = 0
@@ -197,8 +203,8 @@ class Vehicle:
         b = run_car_info.desired_deceleration
         # ? s0:停止時最小車間距離　v:車両速度　t:安全車頭時間　treac:反応時間　delta_v:相対速度　a,最大加速度　b,希望減速度
         ss = round(s0 + v * (t + treac) + ((v * delta_v) / (((a * b) ** 0.5) * 2)), 1)
-        if delta_v * 3.6 <= -5:
-            ss = 0
+        # if delta_v * 3.6 <= -5:
+        #     ss = 0
 
         return ss
 
@@ -232,9 +238,11 @@ class Vehicle:
 
         return accel
 
-    def shift_begin(self, shift_lane_to, time, follower: Vehicle | None = None) -> None:
+    def shift_begin(self, time, dst_lane: int = None, direction: int = None, follower: Vehicle | None = None) -> None:
+        if dst_lane is None and direction is not None:
+            dst_lane = self.lane + direction
         self.shift_lane = True
-        self.shift_lane_to = shift_lane_to
+        self.shift_lane_to = dst_lane
         self.shift_begin_time = time
         if follower is not None:
             follower.shift_front_veh = self
@@ -258,6 +266,7 @@ class Vehicle:
                 self.lane = self.shift_lane_to
                 self.shift_lane_to = self.shift_begin_time = self.shift_distance_go = 0
                 self.shift_lane = False
+                self.info.mode = 0
                 run_car_info.merging_flag = False
                 if self.app_veh is not None:
                     self.app_veh.info.mode = 0

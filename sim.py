@@ -19,15 +19,6 @@ def sim(car_max, merging_ratio, penetration, ego, seed, dir_path, q_lane0, inter
 
 
 if __name__ == "__main__":
-    # todo lc制御無しのほうが結果が良くなってしまっている訳を可視化で確認(10%において結果が出すぎている）
-    # todo 合流車両に対して各制御方式においてどの程度自動運転車両が対応しているか
-
-    # todo lc_ctrlのシステムを変換する
-    # todo idea lc 制御をおこなった場合元に戻してもいいかも
-    # todo 合流部においてmanual:(3-4),auto(2-3)
-    # todo 合流制御(I:\マイドライブ\研究\最新版2\Data_dir\1119_235749\普及率30.0%\車両数700_80\lc_controlあり\seed0.xlsx)の318
-    # todo などの様なパターンを修正，合流車両，本線車両の速度加速度より車間距離計算を行いmode3に割り当てる
-    # todo 合流車線を走行する車両の減速は消してもいいかも
 
     # veh_max_ls = [650, 700]
     # penetration_ls = [0, 0.05, 0.1, 0.2, 0.3]
@@ -35,16 +26,18 @@ if __name__ == "__main__":
     # seed_ls = range(10)
     # q_lane0_ls = [50, 80]
 
-    veh_max_ls = [700]
-    penetration_ls = [0, 0.1, 0.2, 0.3]
+    veh_max_ls = [600, 650, 700]
+    penetration_ls = [0, 0.05, 0.1, 0.2, 0.3]
     merging_ratio_ls = [0.5]
     seed_ls = range(10)
     q_lane0_ls = [50]
     ego_ls = [0]
     # penetration==0用のcfg
     default_cfg = {"speed_control": False, "distance_control": False, "lc_control": False, "merging_control": False}
-    controller_cfgs = [{"speed_control": False, "distance_control": True, "lc_control": True, "merging_control": True},
-                       {"speed_control": False, "distance_control": True, "lc_control": False, "merging_control": True}]
+    controller_cfgs = [
+        # {"speed_control": False, "distance_control": True, "lc_control": "right", "merging_control": True},
+        {"speed_control": False, "distance_control": True, "lc_control": False, "merging_control": True}
+        ]
 
     sim_time = 1  # ? シミュレーションを行っている回数
 
@@ -54,6 +47,7 @@ if __name__ == "__main__":
     if 0 in penetration_ls:
         sim_time_max += len(veh_max_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(ego_ls)
     print("シミュレーション予定回数：", sim_time_max)
+
     now = datetime.now()
     # ? 保存するディレクトリ名
     tmp_dir_name = input("フォルダ名を指定する：")
@@ -106,7 +100,7 @@ if __name__ == "__main__":
                                                             interval=interval_log,
                                                             controller=controller,
                                                             second_ctrl_ls=second_ctrl_id_ls)
-                                    if controller.lc_control:
+                                    if controller.lc_control_right:
                                         lc_memo.set(veh_max=veh_max, merging_ratio=merging_ratio, seed=seed,
                                                     q_lane0=q_lane0, ego=ego, penetration=penetration,
                                                     id_ls=second_ctrl_id_ls)

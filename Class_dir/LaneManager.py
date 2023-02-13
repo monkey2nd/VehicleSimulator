@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from random import Random
 from typing import List
 
@@ -17,6 +18,7 @@ class LaneManager:
         self.lane_num = lane_num  # ? 車線数
         self.run_vehicle_ls: List[Vehicle] = []  # ? 現在走行している車両のCarクラスリスト
         self.q_lane_ls = []  # ? 各車線を走行する合計車両数のリスト
+        self.q_main_lane = 0  # 本線を走行する車両数
         self.lane_vehicle_lists: List[List[Vehicle]] = [[] for _ in range(lane_num)]  # ? 現在走行している各車線ごとのCarリスト
 
         self.occur_num_ls = [0 for _ in range(lane_num)]  # ? 各車線ごとの車両発生数
@@ -28,14 +30,15 @@ class LaneManager:
         self.merging_ratio = merging_ratio
         self.ego_ratio = ego_ratio
         self.lane_ratio = [0.3, 0.3, 0.4]  # ? 各車線の車両交通量
-        # self.lane_ratio = [0.3, 0.3, 0.4]  # ? 各車線の車両交通量
+        # self.lane_ratio = [0.35, 0.35, 0.3]  # ? 各車線の車両交通量
+        # self.lane_ratio = [0.4, 0.4, 0.2]  # ? 各車線の車両交通量
 
         self.ms_start = 1200  # ? 加速車線開始位置
         self.ms_end = self.ms_start + 300  # ? 加速車線終了位置
         self.road_length = self.ms_end + 400  # ? 道路の長さ
 
         # self.vel_sensor_area = 10  # ? 合流車線を走る普通車両の速度検出を行うvel_sensorの検知範囲
-        self.vel_sensor_point = 1100  # ? 通信開始位置
+        self.vel_sensor_point = 1000  # ? 通信開始位置(ex.1100)
         self.communication_area = 30  # ? 通信範囲
         # self.communication_start_point = 800  # ? 通信開始位置
 
@@ -43,7 +46,7 @@ class LaneManager:
         self.second_control_car_ls = []  # ? 制御により左車線などに移動させた車両クラスリスト
         self.second_control_car_limit = 99
 
-        self.third_control_point = 500  # ? 自動運転車両のtauを変更し始める地点
+        self.third_control_point = 400  # ? 自動運転車両のtauを変更し始める地点(ex.400,700)
         self.no_lane_change_point = 100  # ? 車線変更禁止地点
         # self.car_ls_changed_alpha = []
         # self.car_limit_changed_alpha = 3
@@ -54,7 +57,7 @@ class LaneManager:
         self.random.seed(seed)
 
     @property
-    def car_max(self) -> int:
+    def get_veh_max(self) -> int:
         return sum(self.q_lane_ls)
 
     def get_lane(self, lane: int) -> List[Vehicle]:  # ? 車線laneの先頭からの車両リストの取得
@@ -73,44 +76,50 @@ class LaneManager:
     def next_id_increment(self) -> None:
         self.next_generate_car_id += 1
 
-    def make_q_lane_ls(self, car_max, q_lane0) -> None:
+    def make_q_lane_ls(self, veh_max, q_lane0) -> None:
+        self.q_main_lane = veh_max
+        sum_lr = Decimal("0")
+        for lr in self.lane_ratio:
+            sum_lr += Decimal(str(lr))
+        if not sum_lr == 1.0:
+            raise ValueError("the sum of lane_ratio is not 1.0")
         self.q_lane_ls.append(q_lane0)
         for ratio in self.lane_ratio:
-            self.q_lane_ls.append(int(car_max * ratio))
+            self.q_lane_ls.append(int(veh_max * ratio))
 
     def set_frequency(self, time_max) -> None:
         for q_lane in self.q_lane_ls:
             self.frequency_ls.append(int(time_max / q_lane))
 
-    def generate_time(self) -> None:
+    def set_time(self) -> None:
         for q_lane in self.q_lane_ls:
             self.generate_time_ls.append([0 for _ in range(q_lane)])
 
-    def generate_random(self, per):
+    def get_random(self, per):
         return 1 if per > self.random.random() else 0
 
-    def return_rand_frequency(self, frequency) -> int:
+    def get_rand_frequency(self, frequency) -> int:
         return int(frequency * round(self.random.uniform(-0.5, 0.5), 2))
 
     def get_lcvd(self, min_vel=5, max_vel=10):
         return round(self.random.uniform(min_vel / 3.6, max_vel / 3.6), 2)
 
-    def make_car_timetable(self) -> None:
-        self.generate_time()
+    def set_car_timetable(self) -> None:
+        self.set_time()
         for lane in range(self.lane_num):  # * 各車線ごとにループを回す
             lane_generate_time_ls = self.generate_time_ls[lane]
             prev_gen_time = 0  # 次のループで参照する１ループ前のgenerate_time
             for car_num in range(self.q_lane_ls[lane] - 1):
                 gen_time = prev_gen_time + self.frequency_ls[lane]
                 if not lane == 0:
-                    gen_time += self.return_rand_frequency(self.frequency_ls[lane])
+                    gen_time += self.get_rand_frequency(self.frequency_ls[lane])
                 prev_gen_time = gen_time
                 lane_generate_time_ls[car_num + 1] = gen_time
 
     def init_lane_car_list(self) -> None:  # ? lane_id_lsを[[],[],...,[]]に初期化する関数
         self.lane_vehicle_lists = [[] for _ in range(self.lane_num)]
 
-    def make_lane_car_ls(self) -> None:
+    def set_lane_car_ls(self) -> None:
         """
         各車線ごとの車両クラスリストを作成
         """
@@ -133,16 +142,16 @@ class LaneManager:
         veh_info = veh.info
         if lane == 0:
             if self.controller.merging_control:
-                veh_info.type = self.generate_random(self.merging_ratio)
+                veh_info.type = self.get_random(self.merging_ratio)
             else:
                 veh_info.type = 0
         else:
             if not self.controller.use_control:
                 veh_info.type = 0
             else:
-                veh_info.type = self.generate_random(self.penetration)
+                veh_info.type = self.get_random(self.penetration)
             if veh_info.type == 0:
-                veh_info.ego = self.generate_random(self.ego_ratio)
+                veh_info.ego = self.get_random(self.ego_ratio)
 
         self.set_vd(vehicle=veh, lane=lane)
         if lane == 0:
@@ -173,7 +182,7 @@ class LaneManager:
     def generate_vehicle(self, dc: DataCollect, time: int) -> None:
         for lane in range(self.lane_num):  # * 各車線ごとに処理をループ
             generate_time_lane = self.get_generate_time_lane(lane)
-            if time == generate_time_lane[self.occur_num_ls[lane]] and self.next_generate_car_id < self.car_max:
+            if time == generate_time_lane[self.occur_num_ls[lane]] and self.next_generate_car_id < self.get_veh_max:
                 next_gen_veh = Vehicle(veh_id=self.next_generate_car_id)
                 next_gen_veh.lane = lane
                 lane_ls = self.get_lane(lane)
@@ -193,7 +202,7 @@ class LaneManager:
                 self.occur_increment(lane)
                 dc.dece_ls[next_gen_veh.veh_id].set_v_init(v_init=next_gen_veh.info.v_init)
 
-    def make_vd(self, min_vel: int, max_vel: int) -> float:
+    def get_vd(self, min_vel: int, max_vel: int) -> float:
         # この関数を変更する必要あり！
         return round(self.random.uniform(min_vel / 3.6, max_vel / 3.6), 2)
 
@@ -205,24 +214,24 @@ class LaneManager:
         if vehicle.type == 0:
             if vehicle.ego == 0:
                 if lane == 0:
-                    vd = self.make_vd(min_vel=85, max_vel=95)
+                    vd = self.get_vd(min_vel=85, max_vel=95)
                     # vd = self.make_vd(min_vel=80, max_vel=90)
                     # todo ここを変えると大きく変化
                 elif lane == 1:
-                    vd = self.make_vd(min_vel=91, max_vel=100)
+                    vd = self.get_vd(min_vel=91, max_vel=100)
                 elif lane == 2:
-                    vd = self.make_vd(min_vel=101, max_vel=110)
+                    vd = self.get_vd(min_vel=101, max_vel=110)
                 elif lane == 3:
-                    vd = self.make_vd(min_vel=111, max_vel=120)
+                    vd = self.get_vd(min_vel=111, max_vel=120)
             elif vehicle.ego == 1:
                 if lane == 0:
-                    vd = self.make_vd(min_vel=86, max_vel=95)
+                    vd = self.get_vd(min_vel=86, max_vel=95)
                 elif lane == 1:
-                    vd = self.make_vd(min_vel=91, max_vel=95)
+                    vd = self.get_vd(min_vel=91, max_vel=95)
                 elif lane == 2:
-                    vd = self.make_vd(min_vel=101, max_vel=105)
+                    vd = self.get_vd(min_vel=101, max_vel=105)
                 elif lane == 3:
-                    vd = self.make_vd(min_vel=111, max_vel=115)
+                    vd = self.get_vd(min_vel=111, max_vel=120)
         elif vehicle.type == 1:
             if self.controller.speed_control:
                 if extra_code == 0:
@@ -231,9 +240,9 @@ class LaneManager:
                     elif lane == 1:
                         vd = round(85 / 3.6, 2)
                     elif lane == 2:
-                        vd = self.make_vd(min_vel=101, max_vel=110)
+                        vd = self.get_vd(min_vel=101, max_vel=110)
                     elif lane == 3:
-                        vd = self.make_vd(min_vel=111, max_vel=120)
+                        vd = self.get_vd(min_vel=111, max_vel=120)
 
                 elif extra_code == 1:
                     if lane == 1:
@@ -243,7 +252,7 @@ class LaneManager:
                         vd = round(93 / 3.6, 2)
                 elif extra_code == 3:  # ? 追従走行用
                     if lane == 1:
-                        vd = self.make_vd(min_vel=91, max_vel=100)
+                        vd = self.get_vd(min_vel=91, max_vel=100)
 
             elif self.controller.distance_control:
                 if extra_code == 0:
@@ -251,12 +260,12 @@ class LaneManager:
                         vd = round(85 / 3.6, 2)
                         # self.vd = vd_make(min_vel=86, max_vel=95)
                     elif lane == 1:
-                        vd = self.make_vd(min_vel=91, max_vel=100)
+                        vd = self.get_vd(min_vel=91, max_vel=100)
                         # vd = round(110 / 3.6, 2)
                     elif lane == 2:
-                        vd = self.make_vd(min_vel=101, max_vel=110)
+                        vd = self.get_vd(min_vel=101, max_vel=110)
                     elif lane == 3:
-                        vd = self.make_vd(min_vel=111, max_vel=120)
+                        vd = self.get_vd(min_vel=111, max_vel=120)
                 if extra_code == 1:
                     vd = round(110 / 3.6, 2)
         vehicle.set_vd(vd)

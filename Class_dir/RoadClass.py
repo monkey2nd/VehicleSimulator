@@ -107,11 +107,6 @@ class Road:
         follower: Vehicle | None = None  # ? 目的車線追従車両
         follower_dis = float("infinity")  # ? ↑との車間距離
 
-        if vehicle.lane == 0:
-            lc_time = vehicle.info.merging_interval / 10
-        else:
-            lc_time = vehicle.info.shift_interval / 10
-
         for dst_lane_car in self.lm.get_lane(dst_lane):  # ? 車線変更先(dst_lane)のレーンリスト
             distance_front = dst_lane_car.back - vehicle.front
             distance_back = vehicle.back - dst_lane_car.front
@@ -265,10 +260,10 @@ class Road:
                     if shift_front_veh is not None and shift_front_veh.shift_lane_to == veh.lane:
                         leader = veh.shift_front_veh
                         dd_next_car = veh.calculate_dd(target_car=leader)
-                        car_accel = max(-0.5,
+                        # todo ここ-0.5から変更　のちにエラー起きたら修正
+                        car_accel = max(-veh.info.desired_deceleration,
                                         veh.calculate_accel(target_car=leader,
-                                                            desired_vehicle_distance=dd_next_car)
-                                        )
+                                                            desired_vehicle_distance=dd_next_car))
                         accel_ls.append(Accel(accel=car_accel,
                                               target_veh=leader,
                                               desired_distance=dd_next_car,
@@ -317,8 +312,9 @@ class Road:
                     if apped_car.lane == 0:
                         if veh_info.mode == 4:  # * 自車（譲る車両）が減速制御を行っているとき
                             dd = veh.calculate_dd(target_car=apped_car)
-                            car_accel = max(-0.5, veh.calculate_accel(target_car=apped_car,
-                                                                      desired_vehicle_distance=dd))
+                            car_accel = max(-0.5,
+                                            veh.calculate_accel(target_car=apped_car,
+                                                                desired_vehicle_distance=dd))
                             accel_ls.append(Accel(accel=car_accel,
                                                   target_veh=apped_car,
                                                   desired_distance=dd,
@@ -337,7 +333,7 @@ class Road:
                         veh.apped_veh = None
                         veh.info.mode = 0
 
-        min_accel: Accel = min(accel_ls, key=lambda x: x.accel)
+        min_accel: Accel = min(accel_ls, key=lambda accel: accel.accel)
         # if veh.type == 0 and veh.lane == 0 and veh.front < lm.ms_start and min_accel.accel < 0:
         #     min_accel.accel = 0
         veh.accel = min_accel.accel
@@ -348,6 +344,7 @@ class Road:
     def check_flag(self, veh: Vehicle) -> bool:
         """
         本線の譲る車両が現在の速度で走行したときしたとき合流車両を追い越せるか判定する関数
+        todo 加速込みで行いたい
         """
         apped_veh = veh.apped_veh
 
@@ -376,14 +373,16 @@ class Road:
                                 if (self.can_shift(vehicle=vehicle, dst_lane=vehicle.lane + 1) or
                                         (vehicle.back > lm.ms_end - (lm.ms_end - lm.ms_start) / 2 and
                                          self.forced_merging_shift(vehicle=vehicle, direction=1))):
-                                    if vehicle_info.merging_flag is False:
-                                        prev_vd = vehicle.vd
-                                        vehicle.change_vd(lane=vehicle.lane + 1, controller=self.controller)
-                                        vehicle_info.merging_flag = True
                                     leader, follower = self.getneighbors(vehicle=vehicle, dst_lane=vehicle.lane + 1)
                                     vehicle.shift_begin(dst_lane=vehicle.lane + 1,
                                                         time=self.time,
                                                         follower=follower)
+                                    if vehicle_info.merging_flag is False:
+                                        prev_vd = vehicle.vd
+                                        vehicle.change_vd(lane=vehicle.lane + 1, controller=self.controller)
+                                        if prev_vd > vehicle.vd:
+                                            vehicle.set_vd(vd=prev_vd)
+                                        vehicle_info.merging_flag = True
 
                             elif (self.controller.merging_control and
                                   lm.vel_sensor_point < vehicle.front and
@@ -416,24 +415,19 @@ class Road:
                     elif vehicle_info.type == 1:  # * 自動運転車両の挙動
                         if vehicle.lane == 0:
                             if lm.ms_start < vehicle.back:
-                                if vehicle.app_veh is not None:
-                                    if self.can_shift(vehicle=vehicle, dst_lane=vehicle.lane + 1):
-                                        leader, follower = self.getneighbors(vehicle=vehicle, dst_lane=vehicle.lane + 1)
-                                        vehicle.shift_begin(dst_lane=vehicle.lane + 1, time=self.time,
-                                                            follower=follower)
-                                        if vehicle_info.merging_flag is False:
-                                            prev_vd = vehicle.vd
-                                            vehicle.change_vd(controller=self.controller, direction=1)
-                                            if prev_vd > vehicle.vd:
-                                                vehicle.set_vd(prev_vd)
-                                            vehicle_info.merging_flag = True
-                            # elif lm.ms_start < vehicle.front and vehicle_info.merging_flag is False:
-                            #     prev_vd = vehicle.vd
-                            #     vehicle.change_vd(lane=vehicle.lane + 1, controller=self.controller)
-                            #     if vehicle.vd < prev_vd:
-                            #         vehicle.set_vd(prev_vd)
-                            #     vehicle_info.merging_flag = True
-                            #     del prev_vd
+                                if (self.can_shift(vehicle=vehicle, dst_lane=vehicle.lane + 1) or
+                                        (vehicle.back > lm.ms_end - (lm.ms_end - lm.ms_start) / 2 and
+                                         self.forced_merging_shift(vehicle=vehicle, direction=1))):
+                                    leader, follower = self.getneighbors(vehicle=vehicle, dst_lane=vehicle.lane + 1)
+                                    vehicle.shift_begin(dst_lane=vehicle.lane + 1,
+                                                        time=self.time,
+                                                        follower=follower)
+                                    if vehicle_info.merging_flag is False:
+                                        prev_vd = vehicle.vd
+                                        vehicle.change_vd(controller=self.controller, direction=1)
+                                        if prev_vd > vehicle.vd:
+                                            vehicle.set_vd(prev_vd)
+                                        vehicle_info.merging_flag = True
 
                             if (self.controller.merging_control and
                                     vehicle_info.vel_sensor_flag is False and
@@ -456,8 +450,9 @@ class Road:
                                 if vehicle.info.tau_changed_flag is False:
                                     if (lm.third_control_point < vehicle.front < lm.vel_sensor_point and
                                             vehicle.apped_veh is None):
-                                        if vehicle.front_veh is not None and vehicle.front_veh.type == 0:
+                                        if vehicle.front_veh is not None:
                                             vehicle.change_tau(2)
+                                            # vehicle.change_tau(1.3)
                                             vehicle.info.tau_changed_flag = True
 
                             if self.controller.merging_control:  # 合流制御
@@ -470,7 +465,8 @@ class Road:
                                             vehicle.info.mode = 3
                                         else:
                                             vehicle_info.mode = 4
-                                            if vehicle.apped_veh.info.merging_flag is False:
+                                            if (vehicle.apped_veh.info.merging_flag is False and
+                                                    vehicle.apped_veh.type == 1):
                                                 vehicle.apped_veh.change_vd(controller=self.controller,
                                                                             lane=vehicle.apped_veh.lane + 1)
                                                 vehicle.apped_veh.info.merging_flag = True

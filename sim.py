@@ -37,13 +37,13 @@ if __name__ == "__main__":
     controller_cfgs = [
         # {"speed_control": False, "distance_control": True, "lc_control": "right", "merging_control": True},
         {"speed_control": False, "distance_control": True, "lc_control": False, "merging_control": True}
-        ]
+    ]
 
     sim_time = 1  # ? シミュレーションを行っている回数
 
     sim_time_max = 0
-    sim_time_max += len(veh_max_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(ego_ls) \
-                    * len([_ for _ in penetration_ls if _ != 0]) * len(controller_cfgs)
+    sim_time_max += len(veh_max_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(ego_ls) * \
+                    len([_ for _ in penetration_ls if _ != 0]) * len(controller_cfgs)
     if 0 in penetration_ls:
         sim_time_max += len(veh_max_ls) * len(merging_ratio_ls) * len(seed_ls) * len(q_lane0_ls) * len(ego_ls)
     print("シミュレーション予定回数：", sim_time_max)

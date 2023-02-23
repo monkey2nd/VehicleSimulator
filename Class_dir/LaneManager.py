@@ -29,8 +29,8 @@ class LaneManager:
         self.penetration = penetration
         self.merging_ratio = merging_ratio
         self.ego_ratio = ego_ratio
-        self.lane_ratio = [0.3, 0.3, 0.4]  # ? 各車線の車両交通量
-        # self.lane_ratio = [0.35, 0.35, 0.3]  # ? 各車線の車両交通量
+        # self.lane_ratio = [0.3, 0.3, 0.4]  # ? 各車線の車両交通量
+        self.lane_ratio = [0.35, 0.35, 0.3]  # ? 各車線の車両交通量
         # self.lane_ratio = [0.4, 0.4, 0.2]  # ? 各車線の車両交通量
 
         self.ms_start = 1200  # ? 加速車線開始位置
@@ -38,7 +38,7 @@ class LaneManager:
         self.road_length = self.ms_end + 400  # ? 道路の長さ
 
         # self.vel_sensor_area = 10  # ? 合流車線を走る普通車両の速度検出を行うvel_sensorの検知範囲
-        self.vel_sensor_point = 1000  # ? 通信開始位置(ex.1100)
+        self.vel_sensor_point = 1100  # ? 通信開始位置(ex.1100)
         self.communication_area = 30  # ? 通信範囲
         # self.communication_start_point = 800  # ? 通信開始位置
 
@@ -46,7 +46,7 @@ class LaneManager:
         self.second_control_car_ls = []  # ? 制御により左車線などに移動させた車両クラスリスト
         self.second_control_car_limit = 99
 
-        self.third_control_point = 400  # ? 自動運転車両のtauを変更し始める地点(ex.400,700)
+        self.third_control_point = 500  # ? 自動運転車両のtauを変更し始める地点(ex.400,700)
         self.no_lane_change_point = 100  # ? 車線変更禁止地点
         # self.car_ls_changed_alpha = []
         # self.car_limit_changed_alpha = 3
@@ -203,7 +203,6 @@ class LaneManager:
                 dc.dece_ls[next_gen_veh.veh_id].set_v_init(v_init=next_gen_veh.info.v_init)
 
     def get_vd(self, min_vel: int, max_vel: int) -> float:
-        # この関数を変更する必要あり！
         return round(self.random.uniform(min_vel / 3.6, max_vel / 3.6), 2)
 
     def set_vd(self, vehicle: Vehicle, lane: int, extra_code=0) -> None:
@@ -257,8 +256,8 @@ class LaneManager:
             elif self.controller.distance_control:
                 if extra_code == 0:
                     if lane == 0:
-                        vd = round(85 / 3.6, 2)
-                        # self.vd = vd_make(min_vel=86, max_vel=95)
+                        # vd = round(85 / 3.6, 2)
+                        vd = self.get_vd(min_vel=85, max_vel=95)
                     elif lane == 1:
                         vd = self.get_vd(min_vel=91, max_vel=100)
                         # vd = round(110 / 3.6, 2)

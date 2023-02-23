@@ -159,7 +159,7 @@ class Vehicle:
             elif controller.distance_control:
                 if extra_code == 0:
                     if lane == 0:
-                        vd = round(80 / 3.6, 2)
+                        vd = self.make_vd(min_vel=85, max_vel=95)
                         # self.vd = make_vd(min_vel=86, max_vel=95)
                     elif lane == 1:
                         vd = self.make_vd(min_vel=91, max_vel=100)
@@ -203,8 +203,9 @@ class Vehicle:
         b = run_car_info.desired_deceleration
         # ? s0:停止時最小車間距離　v:車両速度　t:安全車頭時間　treac:反応時間　delta_v:相対速度　a,最大加速度　b,希望減速度
         ss = round(s0 + v * (t + treac) + ((v * delta_v) / (((a * b) ** 0.5) * 2)), 1)
-        # if delta_v * 3.6 <= -5:
-        #     ss = 0
+        if delta_v * 3.6 <= -5 and self.info.mode != 4:
+            # modeの制限を入れないと合流制御の時も反応してしまう
+            ss = 0
 
         return ss
 
@@ -220,7 +221,7 @@ class Vehicle:
         a = run_car_info.max_accel
         v = self.vel
         ss = self.calculate_dd(
-            target_car=target_car) if desired_vehicle_distance is None else desired_vehicle_distance
+                target_car=target_car) if desired_vehicle_distance is None else desired_vehicle_distance
         s = self.distance if target_car is None else target_car.back - self.front
         vd = self.vd
 
